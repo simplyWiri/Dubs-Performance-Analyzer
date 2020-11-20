@@ -1,6 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" DefaultTargets="Build"
-  xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -153,6 +152,9 @@
   <ItemGroup>
     <PackageReference Include="Krafs.Rimworld.Ref" Version="1.2.2753-REV" GeneratePathProperty="true" />
     <PackageReference Include="Lib.Harmony" ExcludeAssets="runtime" Version="2.0.4" />
+    <PackageReference Include="Microsoft.Build.Utilities.Core">
+      <Version>16.8.0</Version>
+    </PackageReference>
     <PackageReference Include="Microsoft.NETCore.Platforms">
       <Version>1.1.0</Version>
     </PackageReference>
@@ -168,7 +170,6 @@
     </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-
   <Target Name="BeforeBuild">
     <!-- Publicise dll -->
     <Message Importance="High" Text="Publicising Rimworld Assembly ..." />
