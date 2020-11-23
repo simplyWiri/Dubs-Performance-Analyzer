@@ -21,7 +21,6 @@
     <DebugType>full</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>..\1.2\Assemblies\</OutputPath>
-    <BaseIntermediateOutputPath>\bin-int\Debug\</BaseIntermediateOutputPath>
     <IntermediateOutputPath>$(BaseIntermediateOutputPath)</IntermediateOutputPath>
     <DefineConstants>DEBUG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
@@ -35,7 +34,6 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>..\1.2\Assemblies\</OutputPath>
-    <BaseIntermediateOutputPath>\bin-int\Release\</BaseIntermediateOutputPath>
     <IntermediateOutputPath>$(BaseIntermediateOutputPath)</IntermediateOutputPath>
     <DefineConstants>NDEBUG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
@@ -172,7 +170,7 @@
     <Message Importance="High" Text="Publicising Rimworld Assembly ..." />
     <Publicise TargetAssemblyPath="$(PkgKrafs_Rimworld_Ref)\ref\net472\Assembly-CSharp.dll" OutputPath="$(PkgKrafs_Rimworld_Ref)\ref\net472\" />
     <Publicise TargetAssemblyPath="$(PkgKrafs_Rimworld_Ref)\ref\net472\UnityEngine.CoreModule.dll" OutputPath="$(PkgKrafs_Rimworld_Ref)\ref\net472\" />
-    <!-- Set our variables `RimworldDll` & `PublicisedRimworldDll` -->
+    <!-- Set our variables -->
     <PropertyGroup>
       <RimworldDll>$(PkgKrafs_Rimworld_Ref)\ref\net472\Assembly-CSharp.dll</RimworldDll>
       <PublicisedRimworldDll>$(PkgKrafs_Rimworld_Ref)\ref\net472\Assembly-CSharp_public.dll</PublicisedRimworldDll>
