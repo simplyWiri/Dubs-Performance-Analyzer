@@ -11,7 +11,7 @@ using System.Threading;
 using UnityEngine;
 using Verse;
 
-namespace Analyzer
+namespace Analyzer 
 {
     public class Modbase : Mod
     {
