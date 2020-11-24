@@ -52,18 +52,22 @@
 
 
   <Target Name="BeforeBuild">
-    <!-- Publicise dll -->
-
+    <!-- Set our variables -->
     <PropertyGroup>
       <AssemblyCSharp>$(PkgKrafs_Rimworld_Ref)\ref\net472\Assembly-CSharp.dll</AssemblyCSharp>
-      <AssemblyCSharp_Publicised>$(PkgKrafs_Rimworld_Ref)\ref\net472\Assembly-CSharp_publicised.dll</AssemblyCSharp_Publicised>
       <Unity_CoreModule>$(PkgKrafs_Rimworld_Ref)\ref\net472\UnityEngine.CoreModule.dll</Unity_CoreModule>
-      <Unity_CoreModule_Publicised>$(PkgKrafs_Rimworld_Ref)\ref\net472\UnityEngine.CoreModule_publicised.dll</Unity_CoreModule_Publicised>
+
+      <PubliciseOutputPath>$(PkgKrafs_Rimworld_Ref)\ref\net472\</PubliciseOutputPath>
+
+      <AssemblyCSharp_Publicised>$(PubliciseOutputPath)Assembly-CSharp_publicised.dll</AssemblyCSharp_Publicised>
+      <Unity_CoreModule_Publicised>$(PubliciseOutputPath)UnityEngine.CoreModule_publicised.dll</Unity_CoreModule_Publicised>
     </PropertyGroup>
 
+    <!-- Publicise the dlls (if required) -->
     <Message Importance="High" Text="Publicising Rimworld Assembly ..." />
     <CallTarget Targets="PubliciseAssemblies"/>
 
+    <!-- Add references to the new publicised dlls -->
     <Message Importance="High" Text="Replacing reference to un-publicised assemblies with publicised equivalents ..." />
     <ItemGroup>       
       <Reference Include="$(AssemblyCSharp_Publicised)">
@@ -84,13 +88,12 @@
 
   <Target Name="PubliciseAssemblies"> 
     <PropertyGroup>   
-        <PubliciseOutputPath>$(PkgKrafs_Rimworld_Ref)\ref\net472\</PubliciseOutputPath>
     </PropertyGroup>
 
     <Publicise TargetAssemblyPath="$(AssemblyCSharp)" OutputPath="$(PubliciseOutputPath)" Condition="Exists('$(AssemblyCSharp)')" /> 
     <Publicise TargetAssemblyPath="$(Unity_CoreModule)" OutputPath="$(PubliciseOutputPath)" Condition="Exists('$(Unity_CoreModule)')"/>
   </Target> 
-  
+
   <Target Name="AfterBuild">
       <Message Importance="High" Text="Reference:  %(ReferencePath.ReferenceAssembly)" />      
   </Target>
