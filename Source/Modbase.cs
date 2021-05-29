@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using Analyzer.GCNotify;
 using UnityEngine;
 using Verse;
 
@@ -21,14 +22,14 @@ namespace Analyzer
         private static Harmony harmony = null;
         public static Harmony Harmony => harmony ??= new Harmony("Dubwise.DubsProfiler");
         private static Harmony staticHarmony = null;
-        public static Harmony StaticHarmony => staticHarmony ??= new Harmony("Dubswise.PerformanceAnalyzer");
+        public static Harmony StaticHarmony => staticHarmony ??= new Harmony("Dubwise.PerformanceAnalyzer");
 
         // Major - Reworked functionality
         // Minor - New feature
         // Build - Change Existing Feature
         // Revision - Hotfix
 
-        private static readonly Version analyzerVersion = new Version(1, 1, 2, 4);
+        private static readonly Version analyzerVersion = new Version(1, 1, 2, 3);
 
         public static bool isPatched = false;
 
@@ -45,17 +46,25 @@ namespace Analyzer
                 GUIController.InitialiseTabs();
 
                 // GUI needs to be initialised before xml (the tabs need to exist for entries to be inserted into them)
-                XmlParser.CollectXmlData();
+               XmlParser.CollectXmlData();
             }
 
             { // Always Running
                 StaticHarmony.Patch(AccessTools.Method(typeof(GlobalControlsUtility), nameof(GlobalControlsUtility.DoTimespeedControls)),
                     prefix: new HarmonyMethod(typeof(GUIElement_TPS), nameof(GUIElement_TPS.Prefix)));
+
+                StaticHarmony.Patch(AccessTools.Method(typeof(Log), nameof(Log.Error)), prefix: new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.ErrorPrefix)), new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.ErrorPostfix)));
+                StaticHarmony.Patch(AccessTools.Method(typeof(Prefs), "get_DevMode"), prefix: new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.DevModePrefix)));
+                StaticHarmony.Patch(AccessTools.Method(typeof(DebugWindowsOpener), "DevToolStarterOnGUI"), prefix: new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.DebugKeysPatch)));
+
             }
 
             { // Performance Patches
                 PerformancePatches.InitialisePatches();
             }
+
+
+
 
 #if DEBUG
             ThreadSafeLogger.Warning("==========================================================================");
@@ -63,7 +72,9 @@ namespace Analyzer
             ThreadSafeLogger.Warning("==========================================================================");
 #endif
 
+            GarbageMan.Init();
         }
+
 
         public override void DoSettingsWindowContents(Rect inRect)
         {

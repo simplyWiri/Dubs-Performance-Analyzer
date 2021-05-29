@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using Verse;
+using Verse.Noise;
 
 namespace Analyzer.Profiling
 {
@@ -16,10 +17,17 @@ namespace Analyzer.Profiling
         Max, Average, Percent, Total, Calls, Name
     }
 
+    public struct TOTALS
+    {
+        public double Max, Average, Percent, Total, Calls, Name;
+    }
+
     public static class Panel_Logs
     {
-        private static Listing_Standard listing = new Listing_Standard();
+        private static Listing_Standard listing = new Listing_Standard { maxOneColumn = true };
         private static Rect viewFrustum;
+
+
 
         private const float BOX_HEIGHT = 40f;
         private const float LABEL_OFFSET = 200f;
@@ -32,12 +40,14 @@ namespace Analyzer.Profiling
 
 
         private static Vector2 ScrollPosition = Vector2.zero;
-        public static float cachedListHeight = float.MaxValue;
 
         public static string tipCache = "";
         public static string tipLabelCache = "";
 
-        public static List<bool> columns = new List<bool> { true, true, true, true, true, true };
+        public static bool[] columns = { true, true, true, true, true, true };
+
+        public static TOTALS totals;
+
 
         public static void DrawLogs(Rect rect)
         {
@@ -49,21 +59,34 @@ namespace Analyzer.Profiling
                 return;
             }
 
+            var columnsR = rect.TopPartPixels(50f);
+            DrawColumns(columnsR);
+
+            totals = new TOTALS();
+
+            rect.AdjustVerticallyBy(columnsR.height + 4);
+            rect.height -= 2f;
+            rect.width -= 2;
+
             Rect innerRect = rect.AtZero();
-            innerRect.height = cachedListHeight;
+            innerRect.height = listing.curY;
+            if (innerRect.height > rect.height)
+            {
+                innerRect.width -= 17f;
+            }
 
             viewFrustum = rect.AtZero(); // Our view frustum starts at 0,0 from the rect we are given
             viewFrustum.y += ScrollPosition.y; // adjust our view frustum vertically based on the scroll position
 
             { // Begin scope for Scroll View
-                Widgets.BeginScrollView(rect, ref ScrollPosition, innerRect, true);
+                Widgets.BeginScrollView(rect, ref ScrollPosition, innerRect);
                 GUI.BeginGroup(innerRect);
                 listing.Begin(innerRect);
 
                 Text.Anchor = TextAnchor.MiddleCenter;
                 Text.Font = GameFont.Tiny;
 
-                DrawColumns(listing.GetRect(BOX_HEIGHT));
+
                 float currentListHeight = BOX_HEIGHT;
 
                 Text.Anchor = TextAnchor.MiddleLeft;
@@ -71,53 +94,69 @@ namespace Analyzer.Profiling
                 lock (Analyzer.LogicLock)
                 {
                     foreach (ProfileLog log in Analyzer.Logs)
+                    {
                         DrawLog(log, ref currentListHeight);
+                    }
                 }
-
-                cachedListHeight = currentListHeight;
 
                 listing.End();
                 GUI.EndGroup();
                 Widgets.EndScrollView();
             }
 
+
             DubGUI.ResetFont();
         }
 
         private static void DrawColumns(Rect rect)
         {
-            Widgets.DrawLineHorizontal(rect.x, rect.y + rect.height, rect.width);
+            Text.Anchor = TextAnchor.MiddleCenter;
+            Text.Font = GameFont.Tiny;
+            GUI.color = Color.grey;
+            Widgets.DrawLineHorizontal(rect.x, rect.yMax, rect.width);
+            GUI.color = Color.white;
             // [ Max ] [ Average ] [ Percent ] [ Total ] [ Calls ] [ Name ] 
 
-            DrawColumnHeader(ref rect, ResourceCache.Strings.logs_max, ResourceCache.Strings.logs_max_desc, SortBy.Max, NUMERIC_WIDTH);
-            DrawColumnHeader(ref rect, ResourceCache.Strings.logs_av, ResourceCache.Strings.logs_av_desc, SortBy.Average, NUMERIC_WIDTH);
+            DrawColumnHeader(ref rect, Strings.logs_max, Strings.logs_max_desc, SortBy.Max, NUMERIC_WIDTH, $"{totals.Max:0.000}ms");
+            DrawColumnHeader(ref rect, Strings.logs_av, Strings.logs_av_desc, SortBy.Average, NUMERIC_WIDTH, $"{totals.Average:0.000}ms");
 
-            DrawColumnHeader(ref rect, ResourceCache.Strings.logs_percent, ResourceCache.Strings.logs_percent_desc, SortBy.Percent, NUMERIC_WIDTH);
-            DrawColumnHeader(ref rect, ResourceCache.Strings.logs_total, ResourceCache.Strings.logs_total_desc, SortBy.Total, NUMERIC_WIDTH);
+            DrawColumnHeader(ref rect, Strings.logs_percent, Strings.logs_percent_desc, SortBy.Percent, NUMERIC_WIDTH, $"{totals.Percent * 100:0.0}%");
+            DrawColumnHeader(ref rect, Strings.logs_total, Strings.logs_total_desc, SortBy.Total, NUMERIC_WIDTH, $"{totals.Total:0.000}ms");
 
-            if (GUIController.CurrentEntry.type != typeof(H_HarmonyTranspilers))
-                DrawColumnHeader(ref rect, ResourceCache.Strings.logs_calls, ResourceCache.Strings.logs_calls_desc, SortBy.Calls, NUMERIC_WIDTH);
+            if (GUIController.CurrentEntry.type != typeof(H_HarmonyTranspilersInternalMethods))
+                DrawColumnHeader(ref rect, Strings.logs_calls, Strings.logs_calls_desc, SortBy.Calls, NUMERIC_WIDTH, $"{totals.Calls.ToString("N0", CultureInfo.InvariantCulture)}");
             // give the name 'infinite' width so there is no wrapping
             // Set text anchor to middle left so we can see our text
             // offset by four chars to make it look offset
             Text.Anchor = TextAnchor.MiddleLeft;
-            DrawColumnHeader(ref rect, "    " + ResourceCache.Strings.logs_name, ResourceCache.Strings.logs_name_desc, SortBy.Name, 10000);
-
+            DrawColumnHeader(ref rect, "    " + Strings.logs_name, Strings.logs_name_desc, SortBy.Name, 10000);
+            DubGUI.ResetFont();
         }
 
-        private static void DrawColumnHeader(ref Rect inRect, string name, string desc, SortBy value, float width)
+        private static void DrawColumnHeader(ref Rect inRect, string name, string desc, SortBy value, float width, string totalReadout = "")
         {
-
+            bool closed = false;
             if (!columns[(int)value]) // If our column is currently collapsed
             {
                 if (value != SortBy.Name)
                     width = ARBITRARY_CLOSED_OFFSET;
-                name = "";
+                closed = true;
             }
+
+            Widgets.DrawOptionBackground(inRect, false);
 
             var rect = inRect.LeftPartPixels(width);
 
-            Widgets.Label(rect, name);
+            if (closed is false)
+            {
+                //  Text.Font = GameFont.Small;
+                Widgets.Label(rect.TopHalf(), name);
+                if (totalReadout != string.Empty)
+                {
+                    // Text.Font = GameFont.Tiny;
+                    Widgets.Label(rect.BottomHalf(), totalReadout);
+                }
+            }
 
             if (Analyzer.SortBy == value) Widgets.DrawHighlight(rect);
 
@@ -139,15 +178,67 @@ namespace Analyzer.Profiling
             {
                 inRect.AdjustHorizonallyBy(width);
 
+                GUI.color = Color.grey;
                 Widgets.DrawLineVertical(inRect.x, rect.y, rect.height);
+                GUI.color = Color.white;
             }
+        }
+
+
+        private static bool Matched(ProfileLog log, string s)
+        {
+            if (s == string.Empty)
+            {
+                Panel_TopRow.MatchType = string.Empty;
+                return true;
+            }
+
+            if (log.def != null && log.def.defName.ContainsCaseless(s))
+            {
+                Panel_TopRow.MatchType = "Def";
+                return true;
+            }
+
+            if (log.mod.ContainsCaseless(s))
+            {
+                Panel_TopRow.MatchType = "Mod";
+                return true;
+            }
+
+            if (log.meth != null && log.meth.Name.ContainsCaseless(s))
+            {
+                Panel_TopRow.MatchType = "Assembly";
+                return true;
+            }
+
+            if (log.type != null && log.type.Assembly.FullName.ContainsCaseless(s))
+            {
+                Panel_TopRow.MatchType = "Assembly";
+                return true;
+            }
+
+            if (log.label.ContainsCaseless(s))
+            {
+                Panel_TopRow.MatchType = "Label";
+                return true;
+            }
+
+            return false;
         }
 
         private static void DrawLog(ProfileLog log, ref float currentListHeight)
         {
-            if (Panel_TopRow.TimesFilter != "")
-                if (!log.label.ToLower().Contains(Panel_TopRow.TimesFilter.ToLower())) return;
+            
+            if (Matched(log, Panel_TopRow.TimesFilter) is false)
+            {
+                return;
+            }
 
+            totals.Max += log.max;
+            totals.Average += log.average;
+            totals.Percent += log.percent;
+            totals.Total += log.total;
+            totals.Calls += log.calls;
 
             Rect visible = listing.GetRect(BOX_HEIGHT);
 
@@ -177,21 +268,21 @@ namespace Analyzer.Profiling
             if (GUIController.CurrentProfiler?.key == profile.key)
                 Widgets.DrawHighlightSelected(visible);
 
-            // onhover tooltip
-            if (Mouse.IsOver(visible))
-                DrawHover(log, visible);
+            // onhover tooltip //doesn't actually work properly so fuck that off
+          //  if (Mouse.IsOver(visible))
+             //   DrawHover(log, visible);
 
             // onclick work, left click view stats, right click internal patch, ctrl + left click unpatch
             if (Widgets.ButtonInvisible(visible))
                 ClickWork(log, profile);
 
             // Colour a fillable bar below the log depending on the % fill of a log
-            var colour = ResourceCache.GUI.grey;
-            if (log.percent <= .25f) colour = ResourceCache.GUI.grey; // <= 25%
-            else if (log.percent <= .75f) colour = ResourceCache.GUI.blue; //  25% < x <=75%
-            else if (log.percent <= .999) colour = ResourceCache.GUI.red; // 75% < x <= 99.99% (we want 100% to be grey)
+            var colour = Textures.grey;
+            //  if (log.percent <= .25f) colour = Textures.grey; // <= 25%
+            //  else if (log.percent <= .75f) colour = Textures.blue; //  25% < x <=75%
+            //   else if (log.percent <= .999) colour = Textures.red; // 75% < x <= 99.99% (we want 100% to be grey)
 
-            Widgets.FillableBar(visible.BottomPartPixels(8f), log.percent, colour, ResourceCache.GUI.clear, false);
+            Widgets.FillableBar(visible.BottomPartPixels(8f), log.percent, colour, Textures.clear, false);
 
             Text.Anchor = TextAnchor.MiddleCenter;
 
@@ -200,7 +291,7 @@ namespace Analyzer.Profiling
             DrawColumnContents(ref visible, $" {log.percent * 100:0.0}% ", SortBy.Percent);
             DrawColumnContents(ref visible, $" {log.total:0.000}ms ", SortBy.Total);
 
-            if (GUIController.CurrentEntry.type != typeof(H_HarmonyTranspilers))
+            if (GUIController.CurrentEntry.type != typeof(H_HarmonyTranspilersInternalMethods))
                 DrawColumnContents(ref visible, $" {log.calls.ToString("N0", CultureInfo.InvariantCulture)} ", SortBy.Calls);
 
 
@@ -216,6 +307,7 @@ namespace Analyzer.Profiling
 
         public static void DrawColumnContents(ref Rect rect, string str, SortBy value)
         {
+
             if (columns[(int)value])
             {
                 Widgets.Label(value == SortBy.Name ? rect : rect.LeftPartPixels(NUMERIC_WIDTH), str);
@@ -227,44 +319,48 @@ namespace Analyzer.Profiling
             }
         }
 
-        public static void DrawHover(ProfileLog log, Rect visible)
-        {
-            if (log.meth != null)
-            {
-                if (log.label != tipLabelCache) // If we have a new label, re-create the string, else use our cached version.
-                {
-                    tipLabelCache = log.label;
-                    StringBuilder builder = new StringBuilder();
-                    Patches patches = Harmony.GetPatchInfo(log.meth);
-                    if (patches != null)
-                    {
-                        foreach (Patch patch in patches.Prefixes) GetString("Prefix", patch);
-                        foreach (Patch patch in patches.Postfixes) GetString("Postfix", patch);
-                        foreach (Patch patch in patches.Transpilers) GetString("Transpiler", patch);
-                        foreach (Patch patch in patches.Finalizers) GetString("Finalizer", patch);
+        // doesn't work properly
+        //public static void DrawHover(ProfileLog log, Rect visible)
+        //{
+        //    if (log.meth != null)
+        //    {
+        //        if (log.label != tipLabelCache) // If we have a new label, re-create the string, else use our cached version.
+        //        {
+        //            tipLabelCache = log.label;
+        //            StringBuilder builder = new StringBuilder();
+        //            Patches patches = Harmony.GetPatchInfo(log.meth);
+        //            if (patches != null)
+        //            {
+        //                foreach (Patch patch in patches.Prefixes) GetString("Prefix", patch);
+        //                foreach (Patch patch in patches.Postfixes) GetString("Postfix", patch);
+        //                foreach (Patch patch in patches.Transpilers) GetString("Transpiler", patch);
+        //                foreach (Patch patch in patches.Finalizers) GetString("Finalizer", patch);
 
-                        void GetString(string type, Patch patch)
-                        {
-                            if (Utility.IsNotAnalyzerPatch(patch.owner))
-                            {
-                                string ass = patch.PatchMethod.DeclaringType.Assembly.FullName;
+        //                void GetString(string type, Patch patch)
+        //                {
+        //                    if (Utility.IsNotAnalyzerPatch(patch.owner))
+        //                    {
+        //                        if (patch.PatchMethod.DeclaringType != null)
+        //                        {
+        //                            string ass = patch.PatchMethod.DeclaringType.Assembly.FullName;
+        //                            string modName = "Unknown";
+        //                            try
+        //                            {
+        //                                modName = ModInfoCache.AssemblyToModname[ass];
+        //                            }
+        //                            catch { }
 
-                                string modName = "Unknown";
-                                try
-                                {
-                                    modName = ModInfoCache.AssemblyToModname[ass];
-                                } catch { }
+        //                            builder.AppendLine($"{type} from {modName} with the index {patch.index} and the priority {patch.priority}\n");
+        //                        }
+        //                    }
+        //                }
 
-                                builder.AppendLine($"{type} from {modName} with the index {patch.index} and the priority {patch.priority}\n");
-                            }
-                        }
-
-                        tipCache = builder.ToString();
-                    }
-                }
-                TooltipHandler.TipRegion(visible, tipCache);
-            }
-        }
+        //                tipCache = builder.ToString();
+        //            }
+        //        }
+        //        TooltipHandler.TipRegion(visible, tipCache);
+        //    }
+        //}
 
         public static void ClickWork(ProfileLog log, Profiler profile)
         {
@@ -289,7 +385,7 @@ namespace Analyzer.Profiling
 
                 var options = RightClickDropDown(log).ToList();
 
-                if(options.Count != 0) Find.WindowStack.Add(new FloatMenu(options));
+                if (options.Count != 0) Find.WindowStack.Add(new FloatMenu(options));
             }
         }
 
@@ -323,7 +419,7 @@ namespace Analyzer.Profiling
                 yield return new FloatMenuOption("Unpatch methods that patch (Destructive)", () => Utility.UnpatchMethodsOnMethod(meth));
             }
 
-            if(GUIController.CurrentEntry.type != typeof(H_HarmonyTranspilers))
+            if (GUIController.CurrentEntry.type != typeof(H_HarmonyTranspilersInternalMethods))
                 yield return new FloatMenuOption("Profile the internal methods of", () => Utility.PatchInternalMethod(meth, GUIController.CurrentCategory));
 
             // This part is WIP - it would require the ability to change the tab a method is active in on the fly

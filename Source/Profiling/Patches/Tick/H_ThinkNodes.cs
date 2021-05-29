@@ -1,6 +1,7 @@
 ﻿using HarmonyLib;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using Verse;
 using Verse.AI;
@@ -15,32 +16,27 @@ namespace Analyzer.Profiling
 
         public static IEnumerable<MethodInfo> GetPatchMethods()
         {
-            foreach (Type typ in GenTypes.AllTypes)
+            foreach (var typ in GenTypes.AllTypes.Where(t => !t.IsAbstract))
             {
+                MethodInfo method = null;
+
                 if (typeof(ThinkNode_JobGiver).IsAssignableFrom(typ))
                 {
-                    MethodInfo trygive = AccessTools.Method(typ, nameof(ThinkNode_JobGiver.TryGiveJob));
-                    if (!trygive.DeclaringType.IsAbstract && trygive.DeclaringType == typ)
-                    {
-                        if (!patched.Contains(trygive))
-                        {
-                            yield return trygive;
-                            patched.Add(trygive);
-                        }
-                    }
+                    method = AccessTools.Method(typ, nameof(ThinkNode_JobGiver.TryGiveJob));
+                }
+                else if (typeof(ThinkNode_Tagger).IsAssignableFrom(typ))
+                {
+                    method = AccessTools.Method(typ, nameof(ThinkNode_Tagger.TryIssueJobPackage));
                 }
                 else if (typeof(ThinkNode).IsAssignableFrom(typ))
                 {
-                    MethodInfo mef = AccessTools.Method(typ, nameof(ThinkNode.TryIssueJobPackage));
+                    method = AccessTools.Method(typ, nameof(ThinkNode.TryIssueJobPackage));
+                }
 
-                    if (!mef.DeclaringType.IsAbstract && mef.DeclaringType == typ)
-                    {
-                        if (!patched.Contains(mef))
-                        {
-                            yield return mef;
-                            patched.Add(mef);
-                        }
-                    }
+                if (method != null && method.DeclaringType == typ && !patched.Contains(method))
+                {
+                    yield return method;
+                    patched.Add(method);
                 }
             }
         }

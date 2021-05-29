@@ -14,6 +14,7 @@ namespace Analyzer.Profiling
 
         public static IEnumerable<MethodInfo> GetPatchMethods()
         {
+            yield return AccessTools.Method(typeof(TickList), nameof(TickList.Tick));
             yield return AccessTools.Method(typeof(GameComponentUtility), nameof(GameComponentUtility.GameComponentTick));
             yield return AccessTools.Method(typeof(ScreenshotTaker), nameof(ScreenshotTaker.QueueSilentScreenshot));
             yield return AccessTools.Method(typeof(FilthMonitor), nameof(FilthMonitor.FilthMonitorTick));

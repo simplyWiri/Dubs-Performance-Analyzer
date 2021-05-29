@@ -1,5 +1,6 @@
 ﻿using HarmonyLib;
 using System;
+using Analyzer.GCNotify;
 using UnityEngine;
 using Verse;
 
@@ -16,13 +17,8 @@ namespace Analyzer.Profiling
         private static DateTime PrevTime;
         private static int PrevTicks;
         public static int TPSActual;
-        public static float delta;
-
-        public static long CurrentAllocatedMemory;
-        public static long LastMinGC;
-        public static long LastMaxGC;
-
-        public static string GarbageCollectionInfo { get; private set; }
+        
+       // public static string GarbageCollectionInfo { get; private set; }
 
         public static long totalBytesOfMemoryUsed;
 
@@ -30,31 +26,7 @@ namespace Analyzer.Profiling
         {
             if (Analyzer.CurrentlyProfiling)
             {
-                long jam = totalBytesOfMemoryUsed;
-                totalBytesOfMemoryUsed = GC.GetTotalMemory(false);
-
-                if (jam > totalBytesOfMemoryUsed)
-                {
-                    LastMinGC = totalBytesOfMemoryUsed;
-                    LastMaxGC = jam;
-                    GarbageCollectionInfo = $"{totalBytesOfMemoryUsed.ToMb()}MB";
-                }
-
-                delta += Time.deltaTime;
-                if (delta >= 1f)
-                {
-                    delta -= 1f;
-
-                    long PreviouslyAllocatedMemory = CurrentAllocatedMemory;
-                    CurrentAllocatedMemory = GC.GetTotalMemory(false);
-
-                    long MemoryDifference = CurrentAllocatedMemory - PreviouslyAllocatedMemory;
-                    if (MemoryDifference < 0)
-                        MemoryDifference = 0;
-
-                    GarbageCollectionInfo = $"{CurrentAllocatedMemory.ToMb():0.00}MB +{MemoryDifference.ToMb():0.00}MB/s";
-                }
-
+              //  GarbageMan.Collect();
 
                 if (Time.unscaledTime > _timer)
                 {

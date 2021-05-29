@@ -1,12 +1,7 @@
-﻿using HarmonyLib;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Emit;
-using System.Text;
-using System.Threading.Tasks;
-using Verse;
+using HarmonyLib;
 
 namespace Analyzer.Profiling
 {
@@ -21,9 +16,11 @@ namespace Analyzer.Profiling
             {
                 try
                 {
-                    return ((MethodInfo)b1.operand).Name == ((MethodInfo)b2.operand).Name;
+                    return ((MethodInfo) b1.operand).Name == ((MethodInfo) b2.operand).Name;
                 }
-                catch { }
+                catch
+                {
+                }
             }
 
             return b1.operand == b2.operand;
@@ -38,7 +35,8 @@ namespace Analyzer.Profiling
 
     public static class TranspilerMethodUtility
     {
-        public static HarmonyMethod TranspilerProfiler = new HarmonyMethod(typeof(TranspilerMethodUtility), nameof(TranspilerMethodUtility.Transpiler));
+        public static HarmonyMethod TranspilerProfiler =
+            new HarmonyMethod(typeof(TranspilerMethodUtility), nameof(Transpiler));
 
         public static List<MethodBase> PatchedMeths = new List<MethodBase>();
         public static CodeInstMethEqual methComparer = new CodeInstMethEqual();
@@ -60,12 +58,13 @@ namespace Analyzer.Profiling
          */
 
         [HarmonyPriority(Priority.Last)]
-        private static IEnumerable<CodeInstruction> Transpiler(MethodBase __originalMethod, IEnumerable<CodeInstruction> instructions)
+        private static IEnumerable<CodeInstruction> Transpiler(MethodBase __originalMethod,
+            IEnumerable<CodeInstruction> instructions)
         {
-            List<CodeInstruction> inst = PatchProcessor.GetOriginalInstructions(__originalMethod);
-            List<CodeInstruction> modInstList = instructions.ToList();
+            var inst = PatchProcessor.GetOriginalInstructions(__originalMethod);
+            var modInstList = instructions.ToList();
 
-            Myers<CodeInstruction> insts = new Myers<CodeInstruction>(inst.ToArray(), modInstList.ToArray(), methComparer);
+            var insts = new Myers<CodeInstruction>(inst.ToArray(), modInstList.ToArray(), methComparer);
             insts.Compute();
 
             var key = Utility.GetMethodKey(__originalMethod as MethodInfo);
@@ -75,17 +74,18 @@ namespace Analyzer.Profiling
             {
                 // We only want added methods
                 if (thing.change != ChangeType.Added) continue;
-                if (!InternalMethodUtility.IsFunctionCall(thing.value.opcode) || !(thing.value.operand is MethodInfo meth)) continue;
+                if (!InternalMethodUtility.IsFunctionCall(thing.value.opcode) ||
+                    !(thing.value.operand is MethodInfo meth)) continue;
 
                 // swap our instruction
                 var replaceInstruction = MethodTransplanting.ReplaceMethodInstruction(
                     thing.value,
                     key,
-                    typeof(H_HarmonyTranspilers),
+                    typeof(H_HarmonyTranspilersInternalMethods),
                     index);
 
                 // Find the place it was in our method, and replace the instruction (Optimisation Opportunity to improve this)
-                for (int i = 0; i < modInstList.Count; i++)
+                for (var i = 0; i < modInstList.Count; i++)
                 {
                     var instruction = modInstList[i];
                     if (!InternalMethodUtility.IsFunctionCall(instruction.opcode)) continue;
@@ -96,10 +96,8 @@ namespace Analyzer.Profiling
                     break;
                 }
             }
-    
+
             return modInstList;
         }
-
-
     }
 }

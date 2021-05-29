@@ -52,13 +52,18 @@ namespace Analyzer.Fixes
                 fix.OnGameLoaded(game, Modbase.StaticHarmony);
         }
 
-        public static void Draw(Listing_Standard listing)
+        public static void Draw(Listing_Standard standard)
         {
-            DubGUI.CenterText( () => listing.Label("Fixes"));
+            //DubGUI.CenterText( () => standard.Label("Fixes"));
+
+            var r = standard.GetRect(Text.LineHeight);
+            r.x += 30;
+            r.width -= 30;
+            Widgets.Label(r, "Fixes");
 
             foreach (var fix in Fixes)
             {
-                fix.Draw(ref listing);
+                fix.Draw(standard);
             }
         }
 

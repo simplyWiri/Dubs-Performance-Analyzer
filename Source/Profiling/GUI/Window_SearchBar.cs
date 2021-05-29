@@ -8,19 +8,20 @@ using System.Threading;
 using System.Threading.Tasks;
 using HarmonyLib;
 using UnityEngine;
+using UnityEngine.Experimental.PlayerLoop;
 using Verse;
 
 namespace Analyzer.Profiling
 {
     internal class Window_SearchBar
     {
-        internal static Color windowTransparency = new Color(1,1,1,1);
+        internal static Color windowTransparency = new Color(1, 1, 1, 1);
         private const float mouseDistTillClose = 35f;
 
         public static Rect viewFrustum;
         private static Vector2 scrollOffset = new Vector2(0, 0);
-        private static float yHeigthCache = float.MaxValue;
-        private static Listing_Standard listing = new Listing_Standard();
+
+        public static Listing_Standard listing = new Listing_Standard { maxOneColumn = true };
 
         private static bool requiresUpdate = true;
         private static string searchText;
@@ -75,68 +76,146 @@ namespace Analyzer.Profiling
                 requiresUpdate = false;
             }
 
-            Draw(inRect);
+            if (cachedEntries.Count > 0)
+            {
+                Draw(inRect);
+            }
+          
         }
+
+        public static int HighlightedEntry = 0;
+
+
+        public static void Control()
+        {
+            if (Event.current.type == EventType.KeyDown)
+            {
+                if (Event.current.keyCode == KeyCode.DownArrow)
+                {
+                    Event.current.Use();
+                    arrowPressed = true;
+                    HighlightedEntry++;
+                }
+                if (Event.current.keyCode == KeyCode.UpArrow)
+                {
+                    Event.current.Use();
+                    arrowPressed = true;
+                    HighlightedEntry--;
+                }
+                if (Event.current.keyCode == KeyCode.Return)
+                {
+                    returned = true;
+                    Event.current.Use();
+                }
+            }
+        }
+
+        private static bool arrowPressed = false;
+        private static bool returned = false;
 
         public static void Draw(Rect rect)
         {
-            var innerRect = rect.AtZero();
-            innerRect.height = yHeigthCache;
+            rect.height = Mathf.Min(listing.curY+8, rect.height);
+
+            Widgets.DrawBoxSolid(rect, Widgets.WindowBGFillColor);
+            rect = rect.ContractedBy(4);
 
             viewFrustum = rect.AtZero();
-            viewFrustum.y += scrollOffset.y;
+            viewFrustum.y = scrollOffset.y;
 
-            Widgets.BeginScrollView(rect, ref scrollOffset, innerRect, false);
+            var innerRect = rect.AtZero();
+            innerRect.height = listing.curY;
+            innerRect.width -= 24f;
+            innerRect.x += 6;
+
+            Widgets.BeginScrollView(rect, ref scrollOffset, innerRect);
             GUI.BeginGroup(innerRect);
             listing.Begin(innerRect);
-
-            float yHeight = 0;
 
             Text.Anchor = TextAnchor.MiddleLeft;
             Text.Font = GameFont.Tiny;
 
             lock (sync)
             {
+                if (HighlightedEntry > cachedEntries.Count - 1)
+                {
+                    HighlightedEntry = 0;
+                }
+
+                if (HighlightedEntry < 0)
+                {
+                    HighlightedEntry = cachedEntries.Count - 1;
+                }
+
                 if (!(cachedEntries.Count == 1 && cachedEntries.First() == searchText))
                 {
+                    int L = -1;
                     foreach (var entry in cachedEntries)
                     {
+                        L++;
                         var r = listing.GetRect(Text.LineHeight);
-                        yHeight += r.height;
+
+                        if (arrowPressed)
+                        {
+                            if (L == HighlightedEntry)
+                            {
+                                if (r.y < viewFrustum.y)
+                                {
+                                    scrollOffset.y = r.y;
+                                }
+
+                                if (r.yMax + r.height > viewFrustum.yMax)
+                                {
+                                    scrollOffset.y = r.yMax + r.height - viewFrustum.height;
+                                }
+                            }
+                        }
 
                         if (!r.Overlaps(viewFrustum)) continue;
 
-                        if (Widgets.ButtonInvisible(r))
+
+                        if (Widgets.ButtonInvisible(r) || L == HighlightedEntry && returned)
                         {
                             Panel_DevOptions.currentInput = entry;
+                            GUI.FocusControl("profileinput");
                         }
 
-                        Widgets.DrawBoxSolid(r, Modbase.Settings.GraphCol);
 
-                        if (Mouse.IsOver(r))
+
+                        if (Mouse.IsOver(r) || L == HighlightedEntry)
                         {
                             Widgets.DrawHighlight(r);
                         }
 
                         r.width = 2000;
-                        Widgets.Label(r, " " + entry);
+                        Widgets.Label(r, entry);
 
                     }
                 }
             }
-
-            yHeigthCache = yHeight;
 
             listing.End();
             GUI.EndGroup();
             Widgets.EndScrollView();
 
             DubGUI.ResetFont();
+            returned = false;
+            arrowPressed = false;
         }
-        
+
 
         private static void PopulateSearch(string searchText, CurrentInput inputType)
         {
+            if (searchText.Length <= 4 && currentInput != CurrentInput.Assembly)
+            {
+                lock (sync)
+                {
+                    cachedEntries = new HashSet<string>();
+                }
+                
+                return;
+            }
+
             bool active = false;
 
             lock (sync)
@@ -148,25 +227,27 @@ namespace Analyzer.Profiling
 
             switch (inputType)
             {
-                case CurrentInput.Method: case CurrentInput.InternalMethod: case CurrentInput.MethodHarmony:
+                case CurrentInput.Method:
+                case CurrentInput.InternalMethod:
+                case CurrentInput.MethodHarmony:
                     searchThread = new Thread(() => PopulateSearchMethod(searchText));
                     break;
-                case CurrentInput.Type: case CurrentInput.TypeHarmony: case CurrentInput.SubClasses:
+                case CurrentInput.Type:
+                case CurrentInput.TypeHarmony:
+                case CurrentInput.SubClasses:
                     searchThread = new Thread(() => PopulateSearchType(searchText));
                     break;
                 default:
                     searchThread = new Thread(() => PopulateSearchAssembly(searchText));
                     break;
             }
-            
+
             searchThread.IsBackground = true;
             searchThread.Start();
         }
 
         private static void PopulateSearchMethod(string searchText)
         {
-            if (searchText.Length <= 4) return;
-
             lock (sync)
             {
                 currentlySearching = true;
@@ -182,7 +263,7 @@ namespace Analyzer.Profiling
                 if (type.GetCustomAttribute<CompilerGeneratedAttribute>() != null) continue;
 
 
-                foreach (var meth in type.GetMethods())
+                foreach (var meth in type.GetMethods(AccessTools.all))
                 {
                     if (!meth.HasMethodBody()) continue;
                     if (meth.IsGenericMethod || meth.ContainsGenericParameters) continue;
@@ -204,8 +285,6 @@ namespace Analyzer.Profiling
 
         private static void PopulateSearchType(string searchText)
         {
-            if (searchText.Length <= 2) return;
-
             lock (sync)
             {
                 currentlySearching = true;

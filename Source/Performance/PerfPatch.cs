@@ -1,11 +1,7 @@
-﻿using Analyzer.Profiling;
-using HarmonyLib;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
+using Analyzer.Profiling;
+using HarmonyLib;
 using UnityEngine;
 using Verse;
 
@@ -20,14 +16,16 @@ namespace Analyzer.Performance
 
     public class PerfPatch
     {
+        public AccessTools.FieldRef<bool> EnabledRefAccess;
+        public bool isPatched;
         public virtual string Name => "";
         public virtual PerformanceCategory Category => PerformanceCategory.Optimizes;
-        public AccessTools.FieldRef<bool> EnabledRefAccess;
-        public bool isPatched = false;
 
         public void Initialise(Type subType)
         {
-            EnabledRefAccess = AccessTools.StaticFieldRefAccess<bool>(subType.GetField("Enabled", BindingFlags.Public | BindingFlags.Static));
+            EnabledRefAccess =
+                AccessTools.StaticFieldRefAccess<bool>(subType.GetField("Enabled",
+                    BindingFlags.Public | BindingFlags.Static));
             if (EnabledRefAccess == null)
             {
                 ThreadSafeLogger.Error("Add an 'Enabled' field you bloody muppet");
@@ -36,16 +34,17 @@ namespace Analyzer.Performance
 
         public virtual void Draw(Listing_Standard listing)
         {
-            var name = Name.TranslateSimple();
-            var tooltip = (Name + ".tooltip").TranslateSimple();
+            var name = Name.Tr();
+            var tooltip = (Name + ".tooltip").Tr();
 
-            var height = Mathf.CeilToInt((name.GetWidthCached() + 30) / (listing.ColumnWidth)) * Text.LineHeight;
-            var rect = listing.GetRect(height);
+          //  var height = Mathf.CeilToInt((name.GetWidthCached() + 30) / listing.ColumnWidth) * Text.LineHeight;
+            var rect = listing.GetRect(Text.LineHeight);
 
             if (DubGUI.Checkbox(rect, name, ref EnabledRefAccess()))
             {
                 CheckState();
             }
+
             TooltipHandler.TipRegion(rect, tooltip);
         }
 
@@ -57,6 +56,7 @@ namespace Analyzer.Performance
                 {
                     PerformancePatches.onDisabled.Remove(Name);
                 }
+
                 OnEnabled(Modbase.StaticHarmony);
             }
             else
@@ -69,7 +69,9 @@ namespace Analyzer.Performance
             }
         }
 
-        public virtual void OnEnabled(Harmony harmony) { }
+        public virtual void OnEnabled(Harmony harmony)
+        {
+        }
 
         // The Disabled execution will not be immediate. It will be called when the window is closed, this is to prevent users spamming change and lagging if the intent is unpatching
         public virtual void OnDisabled(Harmony harmony)
@@ -80,8 +82,8 @@ namespace Analyzer.Performance
         public virtual void ExposeData()
         {
             // Prevent inability to access settings when prototyping
-            string saveId = Name + "-isEnabled".Replace(" ", "-");
-            Scribe_Values.Look(ref EnabledRefAccess(), saveId, false);
+            var saveId = Name + "-isEnabled".Replace(" ", "-");
+            Scribe_Values.Look(ref EnabledRefAccess(), saveId);
         }
     }
 }

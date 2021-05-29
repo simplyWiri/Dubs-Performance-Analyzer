@@ -27,10 +27,10 @@ namespace Analyzer.Fixes
             }
         }
 
-        public virtual void Draw(ref Listing_Standard listing)
+        public virtual void Draw(Listing_Standard listing)
         {
-            var name = Name.TranslateSimple();
-            var tooltip = (Name + ".tooltip").TranslateSimple();
+            var name = Name.Tr();
+            var tooltip = (Name + ".tooltip").Tr();
 
             var height = Mathf.CeilToInt((name.GetWidthCached() + 30) / (listing.ColumnWidth)) * Text.LineHeight;
             var rect = listing.GetRect(height);

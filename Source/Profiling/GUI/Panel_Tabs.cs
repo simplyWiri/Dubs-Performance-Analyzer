@@ -1,9 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 using Verse;
 
@@ -14,17 +10,17 @@ namespace Analyzer.Profiling
         public static float width = 220f;
         private static Vector2 ScrollPosition = Vector2.zero;
         public static Listing_Standard listing = new Listing_Standard();
-        public static float yOffset = 0f;
-        private static float ListHeight = 0;
+        public static float yOffset;
+        private static float ListHeight;
 
         public static void Draw(Rect rect, IEnumerable<Tab> tabs)
         {
-            Rect ListerBox = rect.LeftPartPixels(width);
+            var ListerBox = rect.LeftPartPixels(width);
             ListerBox.width -= 10f;
             Widgets.DrawMenuSection(ListerBox);
             ListerBox = ListerBox.ContractedBy(4f);
 
-            Rect baseRect = ListerBox.AtZero();
+            var baseRect = ListerBox.AtZero();
             baseRect.width -= 16f;
             baseRect.height = ListHeight;
 
@@ -33,24 +29,21 @@ namespace Analyzer.Profiling
 
             yOffset = 0f;
 
-            { // Begin Scope for Scroll & GUI Group/View
-                Widgets.BeginScrollView(ListerBox, ref ScrollPosition, baseRect);
-                GUI.BeginGroup(baseRect);
-                listing.Begin(baseRect);
+            Widgets.BeginScrollView(ListerBox, ref ScrollPosition, baseRect);
+            GUI.BeginGroup(baseRect);
+            listing.Begin(baseRect);
 
-                foreach (Tab tab in tabs)
+            foreach (var tab in tabs)
+            {
+                if (tab.category == Category.Settings || tab.entries.Count > 0)
                 {
-                    if (tab.category == Category.Modder && tab.entries.Count == 0) // if the modder tab is empty, no need to draw it
-                        continue;
-
                     DrawTabs(tab);
                 }
-
-                listing.End();
-                GUI.EndGroup();
-                Widgets.EndScrollView();
             }
 
+            listing.End();
+            GUI.EndGroup();
+            Widgets.EndScrollView();
 
             DubGUI.ResetFont();
             ListHeight = yOffset;
@@ -61,15 +54,26 @@ namespace Analyzer.Profiling
             DubGUI.ResetFont();
             yOffset += 40f;
 
-            Rect row = listing.GetRect(30f);
+            var row = listing.GetRect(30f);
             if (tab.category == Category.Settings)
             {
+                if (GUIController.GetCurrentTab == tab)
+                {
+                    Widgets.DrawHighlightSelected(row);
+                }
+                Widgets.DrawHighlightIfMouseover(row);
                 if (Widgets.ButtonInvisible(row)) tab.onClick();
             }
             else
             {
-                if (Widgets.ButtonImage(row.RightPartPixels(row.height), tab.collapsed ? DubGUI.DropDown : DubGUI.FoldUp)) tab.collapsed = !tab.collapsed;
+                Widgets.DrawHighlightIfMouseover(row);
+                Widgets.DrawTextureFitted(row.RightPartPixels(row.height), tab.collapsed ? DubGUI.DropDown : DubGUI.FoldUp, 1f);
+                if (Widgets.ButtonInvisible(row))
+                {
+                    tab.collapsed = !tab.collapsed;
+                }
             }
+
             row.x += 5f;
             Widgets.Label(row, tab.Label);
 
@@ -80,7 +84,7 @@ namespace Analyzer.Profiling
 
             if (tab.collapsed) return;
 
-            foreach (KeyValuePair<Entry, Type> entry in tab.entries)
+            foreach (var entry in tab.entries)
             {
                 DrawEntry(ref row, entry);
             }
@@ -108,10 +112,10 @@ namespace Analyzer.Profiling
             {
                 if (Input.GetMouseButtonDown(1) && row.Contains(Event.current.mousePosition))
                 {
-                    List<FloatMenuOption> options = new List<FloatMenuOption>()
-                            {
-                                new FloatMenuOption("Close", () => GUIController.RemoveEntry(entry.Key.name))
-                            };
+                    var options = new List<FloatMenuOption>
+                    {
+                        new FloatMenuOption("Close", () => GUIController.RemoveEntry(entry.Key.name))
+                    };
                     Find.WindowStack.Add(new FloatMenu(options));
                 }
             }
@@ -120,8 +124,8 @@ namespace Analyzer.Profiling
 
             if (GUIController.CurrentEntry == entry.Key)
             {
-                bool firstEntry = true;
-                foreach (KeyValuePair<FieldInfo, Setting> keySetting in entry.Key.Settings)
+                var firstEntry = true;
+                foreach (var keySetting in entry.Key.Settings)
                 {
                     if (keySetting.Key.FieldType == typeof(bool))
                     {
@@ -140,7 +144,7 @@ namespace Analyzer.Profiling
                         GUI.color = Color.white;
                         yOffset += 30f;
 
-                        bool cur = (bool)keySetting.Key.GetValue(null);
+                        var cur = (bool)keySetting.Key.GetValue(null);
 
                         if (DubGUI.Checkbox(row, keySetting.Value.name, ref cur))
                         {
@@ -159,6 +163,5 @@ namespace Analyzer.Profiling
                 }
             }
         }
-
     }
 }
