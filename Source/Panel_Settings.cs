@@ -21,30 +21,21 @@ namespace Analyzer
             rect.y += 32;
             Widgets.DrawMenuSection(rect);
 
-       
-
-            if (settingsPage)
+            var list = new List<TabRecord>();
+            list.Add(new TabRecord("settings.performance".Translate(), delegate
             {
                 currentTab = 0;
-            }
-            else
+                Modbase.Settings.Write();
+            }, currentTab == 0));
+            list.Add(new TabRecord("settings.developer".Translate(), delegate
             {
-                var list = new List<TabRecord>();
-                list.Add(new TabRecord("settings.performance".Translate(), delegate
-                {
-                    currentTab = 0;
-                    Modbase.Settings.Write();
-                }, currentTab == 0));
-                list.Add(new TabRecord("settings.developer".Translate(), delegate
-                {
-                    currentTab = 1;
-                    Modbase.Settings.Write();
-                }, currentTab == 1));
+                currentTab = 1;
+                Modbase.Settings.Write();
+            }, currentTab == 1));
 
-                TabDrawer.DrawTabs(rect, list);
-            }
+            TabDrawer.DrawTabs(rect, list);
 
-            rect = rect.ContractedBy(10);
+                rect = rect.ContractedBy(10);
 
             listing.maxOneColumn = true;
             var innyrek = new Rect(0, 0, rect.width - 16f, listheight);
@@ -83,7 +74,7 @@ namespace Analyzer
             }
             else
             {
-                Panel_DevOptions.Draw(listing, rect);
+                Panel_DevOptions.Draw(listing, rect, settingsPage);
             }
 
             listheight = listing.curY;

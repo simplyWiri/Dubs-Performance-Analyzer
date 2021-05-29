@@ -1,19 +1,22 @@
-# Dubs Performance Analyzer (WIP)
+# Basic Understanding
 
-Place it last in the mod list
+## Lingo
+![Lingo](About/identification_lingo.png)
 
-Set a keybind in the keybind settings to open the window.
+## Some Simple Statistics
+Rimworld's update cycle is broken up into units called *ticks*. Ticks measure the speed at which things change within the game. When you adjust the game speed in the bottom right, you increase the amount of ticks the game tries to execute per second. At 1x, it tries to reach 60 *ticks per second* (tps); at 2x, 180tps; at 3x, 360tps; and the dev mode 4x (also accessible through the Smart Speed mod), 900tps. These numbers are doubled whenever all player-controlled pawns on a map are sleeping.
 
-This mod adds a performance analyzer which can be used to profile parts of the game such as ticking and drawing and optimize it by disabling mods, optimizing your code, switching off alerts, filtering out work types, and so on.
+Time for a little math. We can see that to reach 60fps, we need each rendered frame to take less than <img src="https://render.githubusercontent.com/render/math?math=16 {2\over3}ms"> per *update* to reach 60fps. This means to reach 60fps at 3x speed, each tick needs to be *on average* below <img src="https://render.githubusercontent.com/render/math?math=2 {7\over9}ms">. Any spikes in tick length will likely cause FPS to drop, though if the spikes are irregular, it may not significantly slow down gameplay.
 
-This includes fixes for some major bugs and causes of bad performance in the base game.
+The game will always try to run at 60 updates per second. However, ticks are actually independent to updates; in other words, multiple ticks can be occur within a single frame. This is the true difference between the Tick category and the other categories. The entries which are shown in the Tick category can update more or less frequently, depending on your game speed. Keep in mind that if each tick takes too long, the game will automatically throttle your TPS to stabilize your FPS.
 
-Don't go hunting down modders and demanding they fix things using this as evidence. The logging may not be accurate and may not tell the complete story as something else could cause someones mod to run slowly.
-
-This is a work in progress and the master will be changing frequently and may have things added just for 1 persons specific case or for testing, wait for a stable release here or on steam if you don't want to join the discord and engage in discussion about it.
+When attempting to interpret the data provided by the Analyzer, it is important to recognize which Category a given readout is coming from. An average of ~2ms in the Tick category, when adjusted for higher speeds, is worse than an average of ~3ms in any other category. 
 
 
-Discord channel to talk about it - https://discord.gg/Jxzsaht
+## Reading the Display
+If your issue is that your FPS is inconsistent but your TPS is relatively stable, you should be focusing on the **max** value for logs. This is because large spikes in TPS can affect your FPS without consistently slowing down your game.
+
+If your issue is that both FPS and TPS are consistently low, you should be focusing on the **average** value for the logs. 
 
 When looking at logs in the Row format, the coloured bar indicates the percentage makeup of the log's average in the current entry. When an entry is over 75% of the category it will be coloured red, when less than 75% but higher than 25%, it will be blue. If it is less than 25% or is precisely 100% of the entry, it will be shown as grey.
 

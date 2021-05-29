@@ -27,7 +27,8 @@ namespace Analyzer.Profiling
 		public static Category patchType = Category.Update;
 		public static string currentInput = string.Empty;
 		public static bool showSearchbox;
-		public static void Draw(Listing_Standard listing, Rect win)
+
+		public static void Draw(Listing_Standard listing, Rect win, bool settingsPage)
 		{
 			listing.Label(Strings.settings_dnspy);
 			Settings.PathToDnspy = listing.TextEntry(Settings.PathToDnspy);
@@ -42,6 +43,8 @@ namespace Analyzer.Profiling
 			var rect = listing.GetRect(Text.LineHeight);
 			DubGUI.Checkbox(rect, s, ref Settings.disableCleanup);
 			TooltipHandler.TipRegion(rect, Strings.settings_disable_cleanup_desc);
+
+			if (settingsPage) return;
 
 			listing.GapLine();
 
