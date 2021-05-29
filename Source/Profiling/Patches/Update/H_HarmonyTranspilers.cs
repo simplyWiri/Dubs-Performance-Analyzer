@@ -15,37 +15,21 @@ using Verse;
 
 namespace Analyzer.Profiling
 {
-    [Entry("entry.update.harmonytranspilers", Category.Update)]
-    public static class H_HarmonyTranspilers
+    [Entry("entry.update.transpilermethods", Category.Update)]
+    public static class H_HarmonyTranspiledMethods
     {
         public static bool Active = false;
 
-        public static void ProfilePatch()
+
+        public static IEnumerable<MethodInfo> GetPatchMethods()
         {
             var patches = Harmony.GetAllPatchedMethods().ToList();
 
-            var filteredTranspilers = patches
-                .Where(m => Harmony.GetPatchInfo(m).Transpilers.Any(p => Utility.IsNotAnalyzerPatch(p.owner) && !TranspilerMethodUtility.PatchedMeths.Contains(m)))
-                .ToList();
+            var filteredTranspilers = patches.Where(m => Harmony.GetPatchInfo(m).Transpilers.Any(p => Utility.IsNotAnalyzerPatch(p.owner))).ToList();
 
-            TranspilerMethodUtility.PatchedMeths.AddRange(filteredTranspilers);
-
-            foreach (var meth in filteredTranspilers)
+            foreach (var filteredTranspiler in filteredTranspilers)
             {
-                try
-                {
-                    Modbase.Harmony.Patch(meth, transpiler: TranspilerMethodUtility.TranspilerProfiler);
-                }
-                catch (Exception e)
-                {
-#if DEBUG
-                        ThreadSafeLogger.Error($"[Analyzer] Failed to patch transpiler, failed with the message {e.Message}");
-#endif
-#if NDEBUG
-                    if (Settings.verboseLogging)
-                        ThreadSafeLogger.Error($"[Analyzer] Failed to patch transpiler {meth.DeclaringType.FullName + ":" + meth.Name}, failed with the message {e.Message}");
-#endif
-                }
+                yield return filteredTranspiler as MethodInfo;
             }
         }
     }

@@ -21,13 +21,14 @@
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Krafs.Rimworld.Ref" Version="1.2.2753-REV" GeneratePathProperty="true"/>
+    <PackageReference Include="Krafs.Rimworld.Ref" Version="1.2.2753-REV" GeneratePathProperty="true" />
     <PackageReference Include="Lib.Harmony" Version="2.0.2" ExcludeAssets="runtime" />
     <PackageReference Include="Microsoft.NETCore.Platforms" Version="1.1.0" />
-    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472" Version="1.0.0"/>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472" Version="1.0.0" />
     <PackageReference Include="TaskPubliciser" Version="1.0.3" />
   </ItemGroup>
 
