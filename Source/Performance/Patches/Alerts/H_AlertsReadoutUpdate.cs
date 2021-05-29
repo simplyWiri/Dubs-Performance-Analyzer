@@ -34,8 +34,8 @@ namespace Analyzer.Performance
 
         public override void Draw(Listing_Standard listing)
         {
-            var name = "performance.alertsoverride".TranslateSimple();
-            var tooltip = ("performance.alertsoverride" + ".tooltip").TranslateSimple();
+            var name = "performance.alertsoverride".Tr();
+            var tooltip = ("performance.alertsoverride" + ".tooltip").Tr();
 
             var height = Mathf.CeilToInt((name.GetWidthCached() + 30) / listing.ColumnWidth) * Text.LineHeight;
             var rect = listing.GetRect(height);
@@ -43,8 +43,8 @@ namespace Analyzer.Performance
             DubGUI.Checkbox(rect, name, ref OverrideAlerts);
             TooltipHandler.TipRegion(rect, tooltip);
 
-            name = "performance.alertsdisable".TranslateSimple();
-            tooltip = ("performance.alertsdisable" + ".tooltip").TranslateSimple();
+            name = "performance.alertsdisable".Tr();
+            tooltip = ("performance.alertsdisable" + ".tooltip").Tr();
             height = Mathf.CeilToInt((name.GetWidthCached() + 30) / listing.ColumnWidth) * Text.LineHeight;
             rect = listing.GetRect(height);
 

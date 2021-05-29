@@ -15,7 +15,7 @@ namespace Analyzer.Profiling
         
         public string Label => label();
         public string Tip => tip();
-        public bool collapsed = false;
+        public bool collapsed = true;
 
         public Dictionary<Entry, Type> entries = new Dictionary<Entry, Type>();
 

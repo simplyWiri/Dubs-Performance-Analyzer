@@ -78,8 +78,8 @@ namespace Analyzer.Profiling
         {
             this.category = category;
             if (dyGen) return;
-            this.name = name?.TranslateSimple();
-            this.tip = (name + ".tooltip")?.TranslateSimple();
+            this.name = name?.Tr();
+            this.tip = (name + ".tooltip")?.Tr();
         }
 
         public Profiler Start(string key, MethodBase info)
