@@ -15,20 +15,20 @@ namespace Analyzer.Profiling
     public static class MethodInfoCache
     {
         private static Dictionary<string, int> nameToKey = new Dictionary<string, int>();
-        private static List<MethodInfo[]> internalArrays = new List<MethodInfo[]>();
+        private static List<MethodBase[]> internalArrays = new List<MethodBase[]>();
 
         private static int currentIndex = 0;
         private static object indexLock = new object();
 
         public static FieldInfo internalArray = AccessTools.Field(typeof(MethodInfoCache), nameof(internalArrays));
-        public static MethodInfo accessList = AccessTools.Method(typeof(List<MethodInfo[]>), "get_Item");
+        public static MethodInfo accessList = AccessTools.Method(typeof(List<MethodBase[]>), "get_Item");
 
         static MethodInfoCache()
         {
-            internalArrays.Add(new MethodInfo[0x80]);
+            internalArrays.Add(new MethodBase[0x80]);
         }
 
-        public static MethodInfo Get(int index)
+        public static MethodBase Get(int index)
         {
             // basically, [index / 128][index % 128]
             return internalArrays[index >> 7][index & 0x7f];
@@ -50,7 +50,7 @@ namespace Analyzer.Profiling
             };
         }
 
-        public static int AddMethod(string key, MethodInfo method)
+        public static int AddMethod(string key, MethodBase method)
         {
             int index = 0;
 
@@ -65,7 +65,7 @@ namespace Analyzer.Profiling
 
                 if ((index & 0x7f) == 127)
                 {
-                    internalArrays.Add(new MethodInfo[0x80]);
+                    internalArrays.Add(new MethodBase[0x80]);
 #if DEBUG
                     ThreadSafeLogger.Message("[Analyzer] Adding new internal array to the MethodInfoCache");
 #endif
@@ -88,7 +88,7 @@ namespace Analyzer.Profiling
                 internalArrays.Clear();
                 nameToKey.Clear();
             }
-            internalArrays.Add(new MethodInfo[0x80]);
+            internalArrays.Add(new MethodBase[0x80]);
 #if DEBUG
             ThreadSafeLogger.Message("[Analyzer] Cleaned up the MethodInfoCache");
 #endif

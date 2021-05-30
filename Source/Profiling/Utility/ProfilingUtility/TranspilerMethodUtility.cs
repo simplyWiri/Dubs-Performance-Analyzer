@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using HarmonyLib;
 
 namespace Analyzer.Profiling
@@ -8,22 +9,17 @@ namespace Analyzer.Profiling
     public class CodeInstMethEqual : EqualityComparer<CodeInstruction>
     {
         // Functions primarily to check if two function call CodeInstructions are the same. 
-        public override bool Equals(CodeInstruction b1, CodeInstruction b2)
+        public override bool Equals(CodeInstruction a, CodeInstruction b)
         {
-            if (b1.opcode != b2.opcode) return false;
-
-            if (InternalMethodUtility.IsFunctionCall(b1.opcode))
+            if (a.opcode != b.opcode) return false;
+                
+            // because our previous check, both must be the same opcode.
+            if (a.opcode == OpCodes.Callvirt || a.opcode == OpCodes.Call)
             {
-                try
-                {
-                    return ((MethodInfo) b1.operand).Name == ((MethodInfo) b2.operand).Name;
-                }
-                catch
-                {
-                }
+                return (a.operand as MethodBase)?.Name == (b.operand as MethodBase)?.Name;
             }
 
-            return b1.operand == b2.operand;
+            return a.operand == b.operand;
         }
 
         public override int GetHashCode(CodeInstruction obj)
@@ -35,8 +31,7 @@ namespace Analyzer.Profiling
 
     public static class TranspilerMethodUtility
     {
-        public static HarmonyMethod TranspilerProfiler =
-            new HarmonyMethod(typeof(TranspilerMethodUtility), nameof(Transpiler));
+        public static HarmonyMethod TranspilerProfiler = new HarmonyMethod(typeof(TranspilerMethodUtility), nameof(Transpiler));
 
         public static List<MethodBase> PatchedMeths = new List<MethodBase>();
         public static CodeInstMethEqual methComparer = new CodeInstMethEqual();
@@ -58,8 +53,7 @@ namespace Analyzer.Profiling
          */
 
         [HarmonyPriority(Priority.Last)]
-        private static IEnumerable<CodeInstruction> Transpiler(MethodBase __originalMethod,
-            IEnumerable<CodeInstruction> instructions)
+        private static IEnumerable<CodeInstruction> Transpiler(MethodBase __originalMethod, IEnumerable<CodeInstruction> instructions)
         {
             var inst = PatchProcessor.GetOriginalInstructions(__originalMethod);
             var modInstList = instructions.ToList();
@@ -74,8 +68,8 @@ namespace Analyzer.Profiling
             {
                 // We only want added methods
                 if (thing.change != ChangeType.Added) continue;
-                if (!InternalMethodUtility.IsFunctionCall(thing.value.opcode) ||
-                    !(thing.value.operand is MethodInfo meth)) continue;
+
+                if (!(thing.value.opcode == OpCodes.Call || thing.value.opcode == OpCodes.Callvirt) || !(thing.value.operand is MethodInfo meth)) continue;
 
                 // swap our instruction
                 var replaceInstruction = MethodTransplanting.ReplaceMethodInstruction(
@@ -88,7 +82,8 @@ namespace Analyzer.Profiling
                 for (var i = 0; i < modInstList.Count; i++)
                 {
                     var instruction = modInstList[i];
-                    if (!InternalMethodUtility.IsFunctionCall(instruction.opcode)) continue;
+
+                    if (!(thing.value.opcode == OpCodes.Call || thing.value.opcode == OpCodes.Callvirt)) continue;
                     if (!(instruction.operand is MethodInfo info) || info.Name != meth.Name) continue;
 
 

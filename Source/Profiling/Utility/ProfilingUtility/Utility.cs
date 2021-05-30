@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Verse;
@@ -114,67 +115,117 @@ namespace Analyzer.Profiling
                 }
             }
         }
-
-        public static string GetMethodKey(MethodInfo meth)
+        
+        internal static string GetSignature(MethodBase method, bool showParameters = true)
         {
-            string key = "";
+            var firstParam = true;
+            var sigBuilder = new StringBuilder(40);
 
-            if (meth.ReflectedType != null) key = meth.ReflectedType.FullName + ":" + meth.Name;
-            else key = meth.DeclaringType.FullName + ":" + meth.Name;
+            string mKey;
+            if (method.ReflectedType != null) mKey = TypeName(method.ReflectedType, true) + ":" + method.Name;
+            else mKey = TypeName(method.DeclaringType, true) + ":" + method.Name;
+            sigBuilder.Append(mKey);
 
-            if (!key.Contains('`') || !key.Contains(']')) return key;
-
-            // Format generics nicely.
-
-            var first = key.FirstIndexOf(c => c == '`');
-
-            var insertString = "<";
-
-            // sub string
-            var subString = key.Substring(first, (key.LastIndexOf(']') + 1) - first);
-
-            // The string follows this rough format
-            // BaseAssembly.BaseType`[
-            //                          [Assembly.Type, Assembly, Version, Culture, PublicKeyToken ], 
-            //                          [Assembly.Type, Assembly, Version, Culture, PublicKeyToken ]
-            //                       ]:Method
-            // We aim to leave it like BaseAssembly.BaseType<Type, Type>:Method
-
-            // The method to do this is pretty simple
-            // 1. Find the closest comma to the beginning of the string
-            // 2. Iterate backwards until you find the period 
-            // 3. Cut out the substring between the period and the comma (Type), and move it into the insertString
-            // 4. Remove all text from the subString from index 0 -> first index of ]
-            // 5. If there is still a [ in the substring, there are multiple type parameters -> goto step 1
-
-            while (subString.Contains('['))
+            // Add method generics
+            if(method.IsGenericMethod)
             {
-                // If we have multiple generic args, separate with a comma
-                if (insertString.Length > 1) insertString += ", ";
+                sigBuilder.Append("<");
+                foreach(var g in method.GetGenericArguments())
+                {
+                    if (firstParam) firstParam = false;
+                    else sigBuilder.Append(", ");
 
-                // Find the first comma
-                var commaIndex = subString.FirstIndexOf(c => c == ',');
-
-                // Iterate backwards to find the period which indicates the Assembly declaration
-                var cutOff = commaIndex;
-                while (subString[cutOff] != '.') cutOff--;
-
-                // Adjust for the period
-                cutOff++;
-
-                // Add to the insert string the Type (the text between the period and the comma)
-                insertString += subString.Substring(cutOff, commaIndex - cutOff);
-
-                // Remove the string from the subString which includes the information which has just been taken out
-                subString = subString.Remove(0, subString.FirstIndexOf(c => c == ']') + 2);
+                    sigBuilder.Append(TypeName(g));
+                }
+                sigBuilder.Append(">");
             }
-            
-            insertString += ">";
 
-            key = key.Remove(first, (key.LastIndexOf(']') + 1) - first);
-            key = key.Insert(first, insertString);
+            sigBuilder.Append("(");
 
-            return key;
+            if (showParameters)
+            {
+                firstParam = true;
+                foreach (var param in method.GetParameters())
+                {
+                    if (firstParam)
+                    {
+                        firstParam = false;
+                        if (method.IsDefined(typeof(ExtensionAttribute), false))
+                        {
+                            sigBuilder.Append("this ");
+                        }
+                    }
+                    else
+                        sigBuilder.Append(", ");
+
+                    if (param.ParameterType.IsByRef)
+                        sigBuilder.Append("ref ");
+                    else if (param.IsOut)
+                        sigBuilder.Append("out ");
+
+                    sigBuilder.Append(TypeName(param.ParameterType));
+                }
+            }
+
+            sigBuilder.Append(")");
+
+            return sigBuilder.ToString();
+        }
+
+        internal static bool IsGenericType(Type type, string name)
+        {
+            return (type.GetGenericArguments()?.Any() ?? false) && name.Contains('`');
+        }
+
+
+        internal static string TypeName(Type type, bool fullName = false)
+        {
+            var nullableType = Nullable.GetUnderlyingType(type);
+            if (nullableType != null) return nullableType.Name + "?";
+
+            var tName = type.ReflectedType == null ? type.Name : type.ReflectedType.Name;
+
+            if (IsGenericType(type, tName))
+            {
+                var sb = new StringBuilder(tName.Substring(0, tName.IndexOf('`')));
+                sb.Append('<');
+                var first = true;
+                foreach (var t in type.GetGenericArguments())
+                {
+                    if (!first)
+                        sb.Append(", ");
+
+                    sb.Append(TypeName(t));
+                    first = false;
+                }
+                sb.Append('>');
+                return sb.ToString();
+            }
+            else
+            {
+                string ReplaceOccurence(string typeName, string to)
+                {
+                    return type.Name.Replace(typeName, to);
+                }
+
+                // This finds things like "String[]" as well as just String, which is why its not in the switch
+                // Todo: Hash table?
+                if (type.Name.Contains("String")) return ReplaceOccurence("String", "string");
+                if (type.Name.Contains("Int32")) return ReplaceOccurence("Int32", "int");
+                if (type.Name.Contains("Object")) return ReplaceOccurence("Object", "object");
+                if (type.Name.Contains("Boolean"))  return ReplaceOccurence("Boolean", "bool");
+                if (type.Name.Contains("Decimal")) return ReplaceOccurence("Decimal", "decimal");
+
+                if (type.Name == "Void") return "void"; 
+
+                return fullName ? type.FullName : type.Name;
+            }
+        }
+    
+
+        public static string GetMethodKey(MethodBase meth)
+        {
+            return GetSignature(meth, false);
         }
 
         private static void Notify(string message)
@@ -382,6 +433,21 @@ namespace Analyzer.Profiling
         {
             try
             {
+                bool Valid()
+                {
+                    var bytes = method.GetMethodBody()?.GetILAsByteArray();
+                    if (bytes == null) return false;
+                    if (bytes.Length == 0) return false;
+                    if (bytes.Length == 1 && bytes.First() == 0x2A) return false;
+                    return true;
+                }
+
+                if (Valid() == false)
+                {
+                    Error("Can not patch this method, this is likely a method which is virtually dispatched, and thus can not be generically examined.");
+                    return;
+                }
+
                 var guiEntry = method.DeclaringType + ":" + method.Name + "-int";
                 GUIController.AddEntry(guiEntry, category);
                 GUIController.SwapToEntry(guiEntry);
@@ -396,7 +462,7 @@ namespace Analyzer.Profiling
                     }
                     catch (Exception e)
                     {
-                        Error($"Failed to internal patch method {method.DeclaringType.FullName}:{method.Name}, failed with the exep " + e.Message);
+                        ThreadSafeLogger.Error($"Failed to patch the internal method {method.DeclaringType.FullName}:{method.Name}, failed with the error {e.Message} at \n{e.StackTrace}");
                     }
                 });
             }
