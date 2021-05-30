@@ -71,7 +71,7 @@ namespace Analyzer.Profiling
                 ThreadSafeLogger.Warning($"[Analyzer] Already patched method {meth.DeclaringType.FullName + ":" + meth.Name}");
 #else
                 if (Settings.verboseLogging)
-                    ThreadSafeLogger.Warning($"[Analyzer] Already patched method {meth.DeclaringType.FullName + ":" + meth.Name}");
+                    ThreadSafeLogger.Warning($"[Analyzer] Already patched method {Utility.GetSignature(meth, false)}");
 #endif
                 return;
             }
@@ -91,7 +91,7 @@ namespace Analyzer.Profiling
                     ThreadSafeLogger.Error($"[Analyzer] Failed to patch method {meth.DeclaringType.FullName + ":" + meth.Name} failed with the error {e.Message}");
 #else
                     if (Settings.verboseLogging)
-                        ThreadSafeLogger.Warning($"[Analyzer] Failed to patch method {meth.DeclaringType.FullName}:{meth.Name} failed with the error {e.Message}");
+                        ThreadSafeLogger.ReportException(e, $"Failed to patch the method {Utility.GetSignature(meth, false)}");
 #endif
                 }
             });

@@ -172,9 +172,9 @@ namespace Analyzer.Profiling
             return sigBuilder.ToString();
         }
 
-        internal static bool IsGenericType(Type type, string name)
+        internal static bool IsGenericType(Type type)
         {
-            return (type.GetGenericArguments()?.Any() ?? false) && name.Contains('`');
+            return (type.GetGenericArguments()?.Any() ?? false) && type.FullName.Contains('`');
         }
 
 
@@ -183,14 +183,14 @@ namespace Analyzer.Profiling
             var nullableType = Nullable.GetUnderlyingType(type);
             if (nullableType != null) return nullableType.Name + "?";
 
-            var tName = type.ReflectedType == null ? type.Name : type.ReflectedType.Name;
+            var tName = fullName ? type.FullName : type.Name;
 
-            if (IsGenericType(type, tName))
+            if (IsGenericType(type))
             {
                 var sb = new StringBuilder(tName.Substring(0, tName.IndexOf('`')));
                 sb.Append('<');
                 var first = true;
-                foreach (var t in type.GetGenericArguments())
+                foreach (var t in type.GenericTypeArguments)
                 {
                     if (!first)
                         sb.Append(", ");
@@ -258,6 +258,17 @@ namespace Analyzer.Profiling
 #if NDEBUG
             if (!displayMessages) return;
             ThreadSafeLogger.Error($"[Analyzer] Patching error: {message}");
+#endif
+        }
+
+        private static void ReportException(Exception e, string message)
+        {
+#if DEBUG
+            ThreadSafeLogger.ReportException($"[Analyzer] Patching error: {message}");
+#endif
+#if NDEBUG
+            if (!displayMessages) return;
+            ThreadSafeLogger.ReportException(e, message);
 #endif
         }
 
@@ -411,7 +422,7 @@ namespace Analyzer.Profiling
             }
             catch (Exception e)
             {
-                Error($"Failed to locate method {name}, errored with the message {e.Message}");
+                ReportException(e, $"Failed to locate the method {name}");
                 return;
             }
 
@@ -422,7 +433,7 @@ namespace Analyzer.Profiling
         {
             if (InternalMethodUtility.PatchedInternals.Contains(method))
             {
-                Warn($"Trying to re-transpile an already profiled internal method - {method.DeclaringType.FullName}:{method.Name}");
+                Warn($"Trying to re-transpile an already profiled internal method - {Utility.GetSignature(method, false)}");
                 return;
             }
 
@@ -462,13 +473,13 @@ namespace Analyzer.Profiling
                     }
                     catch (Exception e)
                     {
-                        ThreadSafeLogger.Error($"Failed to patch the internal method {method.DeclaringType.FullName}:{method.Name}, failed with the error {e.Message} at \n{e.StackTrace}");
+                        ReportException(e, $"Failed to patch the internal methods within {Utility.GetSignature(method, false)}");
                     }
                 });
             }
             catch (Exception e)
             {
-                Error("Failed to patch internal methods, failed with the error " + e.Message);
+                ReportException(e, "Failed to set up state to patch internal methods");
                 InternalMethodUtility.PatchedInternals.Remove(method);
             }
         }
@@ -492,9 +503,7 @@ namespace Analyzer.Profiling
                 return;
             }
 
-            Notify($"Assembly count: {mod.assemblies?.loadedAssemblies?.Count ?? 0}");
             var assemblies = mod?.assemblies?.loadedAssemblies?.Where(ValidAssembly).ToList();
-            Notify($"Assembly count after removing Harmony/Cecil/Multiplayer/UnityEngine: {assemblies?.Count}");
 
             if (assemblies != null && assemblies.Count() != 0)
             {
@@ -538,7 +547,7 @@ namespace Analyzer.Profiling
                 }
                 catch (Exception e)
                 {
-                    Error($"Patching {assembly.FullName} failed, {e.Message}");
+                    ReportException(e, $"Failed to patch the assembly {assembly.FullName}");
                     return;
                 }
             }

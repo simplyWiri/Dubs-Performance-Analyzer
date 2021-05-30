@@ -73,10 +73,10 @@ namespace Analyzer.Profiling
             {
 
 #if DEBUG
-                ThreadSafeLogger.Error($"Failed to patch the internal method {__originalMethod.DeclaringType.FullName}:{__originalMethod.Name}, failed with the error {e.Message} at \n{e.StackTrace}");
+                ThreadSafeLogger.ReportException(e, $"Failed to patch the methods inside {Utility.GetSignature(__originalMethod, false)}");
 #else
                 if(Settings.verboseLogging)
-                    ThreadSafeLogger.Warning($"Failed to patch the internal method {__originalMethod.DeclaringType.FullName}:{__originalMethod.Name}, failed with the error " + e.Message);
+                    ThreadSafeLogger.ReportException(e, $"Failed to patch the methods inside {Utility.GetSignature(__originalMethod, false)}");
 #endif
 
                 return codeInstructions;
