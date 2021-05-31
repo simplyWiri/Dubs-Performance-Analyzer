@@ -22,6 +22,7 @@ namespace Analyzer.Profiling
 
         public string label;
         public string key;
+        public bool pinned;
 
         public int hitCounter = 0;
 
@@ -40,6 +41,7 @@ namespace Analyzer.Profiling
             this.type = type;
             this.times = new double[RECORDS_HELD];
             this.hits = new int[RECORDS_HELD];
+            this.pinned = false;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -228,8 +228,7 @@ namespace Analyzer.Profiling
 
         private static void DrawLog(ProfileLog log, ref float currentListHeight)
         {
-            
-            if (Matched(log, Panel_TopRow.TimesFilter) is false)
+            if (log.pinned is false && Matched(log, Panel_TopRow.TimesFilter) is false)
             {
                 return;
             }
@@ -250,7 +249,7 @@ namespace Analyzer.Profiling
                 return;
             }
 
-            Profiler profile = ProfileController.Profiles[log.key];
+            var profile = ProfileController.Profiles[log.key];
 
 
             // Is this entry currently 'active'?
@@ -267,10 +266,6 @@ namespace Analyzer.Profiling
 
             if (GUIController.CurrentProfiler?.key == profile.key)
                 Widgets.DrawHighlightSelected(visible);
-
-            // onhover tooltip //doesn't actually work properly so fuck that off
-          //  if (Mouse.IsOver(visible))
-             //   DrawHover(log, visible);
 
             // onclick work, left click view stats, right click internal patch, ctrl + left click unpatch
             if (Widgets.ButtonInvisible(visible))
@@ -293,6 +288,15 @@ namespace Analyzer.Profiling
 
             if (GUIController.CurrentEntry.type != typeof(H_HarmonyTranspilersInternalMethods))
                 DrawColumnContents(ref visible, $" {log.calls.ToString("N0", CultureInfo.InvariantCulture)} ", SortBy.Calls);
+
+
+            if (profile.pinned)
+            {
+                var iconRect = new Rect(visible.x, visible.y + visible.height/4.0f, Text.LineHeight, Text.LineHeight);
+                visible.x += Text.LineHeight;
+
+                GUI.DrawTexture(iconRect, Textures.pin);
+            }
 
 
             Text.Anchor = TextAnchor.MiddleLeft;
@@ -340,7 +344,7 @@ namespace Analyzer.Profiling
             {
                 if (log.meth == null) return;
 
-                var options = RightClickDropDown(log).ToList();
+                var options = RightClickDropDown(log, profile).ToList();
 
                 if (options.Count != 0) Find.WindowStack.Add(new FloatMenu(options));
             }
@@ -363,7 +367,7 @@ namespace Analyzer.Profiling
         }
 
 
-        private static IEnumerable<FloatMenuOption> RightClickDropDown(ProfileLog log)
+        private static IEnumerable<FloatMenuOption> RightClickDropDown(ProfileLog log, Profiler profiler)
         {
             var meth = log.meth as MethodInfo;
 
@@ -375,6 +379,9 @@ namespace Analyzer.Profiling
 
                 yield return new FloatMenuOption("Unpatch methods that patch (Destructive)", () => Utility.UnpatchMethodsOnMethod(meth));
             }
+
+            var message = profiler.pinned ? "Unpin profile from entry" : "Pin profile to the top of the entry";
+            yield return new FloatMenuOption(message, () => profiler.pinned = !profiler.pinned);
 
             if (GUIController.CurrentEntry.type != typeof(H_HarmonyTranspilersInternalMethods))
                 yield return new FloatMenuOption("Profile the internal methods of", () => Utility.PatchInternalMethod(meth, GUIController.CurrentCategory));

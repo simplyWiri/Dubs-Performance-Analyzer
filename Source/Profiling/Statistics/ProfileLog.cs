@@ -20,8 +20,9 @@ namespace Analyzer.Profiling
         public Type type;
         public Def def;
         public MethodBase meth;
+        public bool pinned;
 
-        public ProfileLog(string label, string percentString, double average, float max, Def def, string key, string mod, float percent, float total, float calls, float maxCalls, Type type, MethodBase meth = null)
+        public ProfileLog(string label, string percentString, double average, float max, Def def, string key, string mod, float percent, float total, float calls, float maxCalls, Type type, MethodBase meth = null, bool pinned = false)
         {
             this.label = label;
             this.percentString = percentString;
@@ -36,6 +37,7 @@ namespace Analyzer.Profiling
             this.total = total;
             this.calls = calls;
             this.maxCalls = maxCalls;
+            this.pinned = pinned;
         }
     }
 }
