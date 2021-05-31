@@ -105,11 +105,11 @@ namespace Analyzer.Profiling
                 catch (Exception e)
                 {
 #if DEBUG
-                    ThreadSafeLogger.Error($"[Analyzer] Failed to patch entry, failed with the message {e.Message}");
+                    ThreadSafeLogger.ReportException($"[Analyzer] Failed to patch entry, failed with the message {e.Message}");
 #endif
 #if NDEBUG
                     if (Settings.verboseLogging)
-                        ThreadSafeLogger.Error($"[Analyzer] Failed to patch entry, failed with the message {e.Message}");
+                        ThreadSafeLogger.ReportException(e, $"[Failed to patch entry {entry?.name}");
 #endif
                 }
             });
@@ -224,7 +224,7 @@ namespace Analyzer.Profiling
             }
             catch(Exception e)
             {
-                ThreadSafeLogger.Error("Failed to cleanup analyzer, failed with the error " + e.Message);
+                ThreadSafeLogger.ReportException(e, "Failed to cleanup analyzer");
             }
 
 #if DEBUG 

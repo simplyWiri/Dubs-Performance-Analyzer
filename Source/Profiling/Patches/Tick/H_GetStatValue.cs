@@ -64,9 +64,9 @@ namespace Analyzer.Profiling
                         }
                     }
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
-                    ThreadSafeLogger.Error($"Failed to patch {allLeafSubclass} from {allLeafSubclass.Assembly.FullName} for profiling");
+                    ThreadSafeLogger.ReportException(e, $"Failed to patch {allLeafSubclass} from {allLeafSubclass.Assembly.FullName} for profiling");
                 }
 
             }

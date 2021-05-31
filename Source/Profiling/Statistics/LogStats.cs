@@ -102,11 +102,10 @@ namespace Analyzer.Profiling
             catch (Exception e)
             {
 #if DEBUG
-                ThreadSafeLogger.Error(
-                    $"[Analyzer] Failed while calculating stats for profiler, errored with the message {e.Message}");
+                ThreadSafeLogger.ReportException(e, $"[Analyzer] Failed while calculating stats for profiler");
 #else
                 if(Settings.verboseLogging)
-                    ThreadSafeLogger.Error($"[Analyzer] Failed while calculating stats for profiler, errored with the message {e.Message}");
+                    ThreadSafeLogger.ReportException(e, $"[Analyzer] Failed while calculating stats for profiler");
 #endif
             }
         }

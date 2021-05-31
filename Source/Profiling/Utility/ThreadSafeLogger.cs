@@ -28,6 +28,9 @@ namespace Analyzer.Profiling
     public static class ThreadSafeLogger
     {
         private static ConcurrentQueue<PendingMessage> messages = new ConcurrentQueue<PendingMessage>();
+        // ignore the value, no ConcurrentHashSet in the standard, this just avoids using a mutex-locked hashset
+        private static ConcurrentDictionary<int, byte> keys = new ConcurrentDictionary<int, byte>();
+
         private const string MOD_TAG = "[Analyzer]";
 
         public static string PrependTag(string message)
@@ -61,10 +64,26 @@ namespace Analyzer.Profiling
             messages.Enqueue(new PendingMessage(message, new StackTrace(1, false), LogMessageType.Error));
         }
 
+        public static void ErrorOnce(string message, int key)
+        {
+            if (keys.ContainsKey(key)) return;
+            keys.TryAdd(key, 0);
+
+            Error(message);
+        }
+
         public static void ReportException(Exception e, string message)
         {
-            var finalMessage = $"[Analyzer] {message}, exception: {e.Message}, occured at \n{ExtractTrace(new StackTrace(e, false))}";
+            var finalMessage = $"{MOD_TAG} {message}, exception: {e.Message}, occured at \n{ExtractTrace(new StackTrace(e, false))}";
             Error(finalMessage);
+        }
+
+        public static void ReportExceptionOnce(Exception e, string message, int key)
+        {
+            if (keys.ContainsKey(key)) return;
+            keys.TryAdd(key, 0);
+
+            ReportException(e, message);
         }
 
         public static void DisplayLogs()

@@ -133,9 +133,9 @@ namespace Analyzer.Performance
                     __instance.activeAlerts.Remove(alert);
                 }
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                Log.ErrorOnce("Exception processing alert " + alert.ToString() + ": " + ex.ToString(), 743575, false);
+                ThreadSafeLogger.ReportExceptionOnce(e, $"Exception processing alert {alert}", alert.GetHashCode());
                 __instance.activeAlerts.Remove(alert);
             }
 

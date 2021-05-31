@@ -61,8 +61,8 @@ namespace Analyzer.Profiling
             var insts = new Myers<CodeInstruction>(inst.ToArray(), modInstList.ToArray(), methComparer);
             insts.Compute();
 
-            var key = Utility.GetMethodKey(__originalMethod as MethodInfo);
-            var index = MethodInfoCache.AddMethod(key, __originalMethod as MethodInfo);
+            var key = Utility.GetMethodKey(__originalMethod);
+            var index = MethodInfoCache.AddMethod(key, __originalMethod);
 
             foreach (var thing in insts.changeSet)
             {
