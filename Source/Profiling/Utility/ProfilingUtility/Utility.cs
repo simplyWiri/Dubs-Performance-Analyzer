@@ -44,76 +44,26 @@ namespace Analyzer.Profiling
          */
         public static IEnumerable<string> GetSplitString(string name)
         {
-            List<string> listStrLineElements = new List<string>();
 
-
-            if (name.Contains(','))
+            IEnumerable<string> HandleMultipleMethods(char seperator)
             {
-                string[] range = name.Split(',');
-                range.Do(str => str.Trim());
-                foreach (string str in range)
+                if (name.Contains(seperator) == false) yield break;
+                
+                var range = name.Split(seperator);
+                foreach (var str in range)
                 {
-                    foreach (string ret in GetSplitString(str))
-                        yield return ret;
-                }
-
-                yield break;
-            }
-
-            if (name.Contains(';'))
-            {
-                string[] range = name.Split(';');
-                range.Do(str => str.Trim());
-                foreach (string str in range)
-                {
-                    foreach (string ret in GetSplitString(str))
-                        yield return ret;
-                }
-
-                yield break;
-            }
-
-            // check if our name has a ':', indicating a method
-            if (name.Contains(':'))
-            {
-                yield return name.Trim();
-                yield break;
-            }
-
-            if (name.Contains('.'))
-            {
-                if (name.CharacterCount('.') == 1)
-                {
-                    if (AccessTools.TypeByName(name) != null) // namespace.type
-                    {
-                        yield return name.Trim();
-                        yield break;
-                    }
-                    else // type.method -> type:method
-                    {
-                        yield return name.Replace(".", ":")
-                            .Trim();
-                        yield break;
-                    }
-                }
-                else
-                {
-                    if (AccessTools.TypeByName(name) != null) // namespace.type.type2 or namespace.namespace2.type etc
-                    {
-                        yield return name.Trim();
-                        yield break;
-                    }
-                    else
-                    {
-                        // namespace.type.method
-                        int ind = name.LastIndexOf('.');
-                        yield return name.Remove(ind, 1)
-                            .Insert(ind, ":")
-                            .Trim();
-                        yield break;
-                    }
+                    yield return str.Trim();
                 }
             }
+
+            foreach (var str in HandleMultipleMethods(','))
+                yield return str;
+            
+            foreach (var str in HandleMultipleMethods(';'))
+                yield return str;
+
+
+            yield return name;
         }
         
         internal static string GetSignature(MethodBase method, bool showParameters = true)
@@ -140,10 +90,11 @@ namespace Analyzer.Profiling
                 sigBuilder.Append(">");
             }
 
-            sigBuilder.Append("(");
 
             if (showParameters)
             {
+                sigBuilder.Append("(");
+
                 firstParam = true;
                 foreach (var param in method.GetParameters())
                 {
@@ -165,9 +116,9 @@ namespace Analyzer.Profiling
 
                     sigBuilder.Append(TypeName(param.ParameterType));
                 }
+                sigBuilder.Append(")");
             }
 
-            sigBuilder.Append(")");
 
             return sigBuilder.ToString();
         }
@@ -455,7 +406,7 @@ namespace Analyzer.Profiling
 
                 if (Valid() == false)
                 {
-                    Error("Can not patch this method, this is likely a method which is virtually dispatched, and thus can not be generically examined.");
+                    Error("Can not patch this method, this is likely a method which is virtually dispatched or marked as external, and thus can not be generically examined.");
                     return;
                 }
 

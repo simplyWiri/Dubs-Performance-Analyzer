@@ -1,8 +1,8 @@
-﻿using System;
+﻿	using System;
 using System.Collections.Generic;
 using System.Linq;
-
-using HarmonyLib;
+	using System.Reflection;
+	using HarmonyLib;
 
 using UnityEngine;
 
@@ -255,79 +255,44 @@ namespace Analyzer.Profiling
 		{
 			try
 			{
-				if (cat == Category.Tick)
-				{
-					switch (mode)
-					{
-						case CurrentInput.Method:
-							MethodTransplanting.UpdateMethods(typeof(CustomProfilersTick),
-								Utility.GetMethods(strinput));
-							break;
-						case CurrentInput.Type:
-							MethodTransplanting.UpdateMethods(typeof(CustomProfilersTick),
-								Utility.GetTypeMethods(AccessTools.TypeByName(strinput)));
-							break;
-						case CurrentInput.MethodHarmony:
-							MethodTransplanting.UpdateMethods(typeof(CustomProfilersTick),
-								Utility.GetMethodsPatching(strinput));
-							break;
-						case CurrentInput.SubClasses:
-							MethodTransplanting.UpdateMethods(typeof(CustomProfilersTick),
-								Utility.SubClassImplementationsOf(AccessTools.TypeByName(strinput), m => true));
-							break;
-						case CurrentInput.TypeHarmony:
-							MethodTransplanting.UpdateMethods(typeof(CustomProfilersTick),
-								Utility.GetMethodsPatchingType(AccessTools.TypeByName(strinput)));
-							break;
-						case CurrentInput.InternalMethod:
-							Utility.PatchInternalMethod(strinput, Category.Tick);
-							return;
-						case CurrentInput.Assembly:
-							Utility.PatchAssembly(strinput, Category.Tick);
-							return;
-					}
 
-					GUIController.Tab(Category.Tick).collapsed = false;
-					GUIController.SwapToEntry("Custom Tick");
-				}
-				else
+				var entry = cat == Category.Tick ? typeof(CustomProfilersTick) : typeof(CustomProfilersUpdate);
+				IEnumerable<MethodInfo> methods = null;
+
+				switch (mode)
 				{
-					switch (mode)
-					{
-						case CurrentInput.Method:
-							MethodTransplanting.UpdateMethods(typeof(CustomProfilersUpdate),
-								Utility.GetMethods(strinput));
-							break;
-						case CurrentInput.Type:
-							MethodTransplanting.UpdateMethods(typeof(CustomProfilersUpdate),
-								Utility.GetTypeMethods(AccessTools.TypeByName(strinput)));
-							break;
-						case CurrentInput.MethodHarmony:
-							MethodTransplanting.UpdateMethods(typeof(CustomProfilersUpdate),
-								Utility.GetMethodsPatching(strinput));
-							break;
-						case CurrentInput.SubClasses:
-							MethodTransplanting.UpdateMethods(typeof(CustomProfilersUpdate),
-								Utility.SubClassImplementationsOf(AccessTools.TypeByName(strinput), m => true));
-							break;
-						case CurrentInput.TypeHarmony:
-							MethodTransplanting.UpdateMethods(typeof(CustomProfilersUpdate),
-								Utility.GetMethodsPatchingType(AccessTools.TypeByName(strinput)));
-							break;
-						case CurrentInput.InternalMethod:
-							Utility.PatchInternalMethod(strinput, Category.Update);
-							return;
-						case CurrentInput.Assembly:
-							Utility.PatchAssembly(strinput, Category.Update);
-							return;
-					}
-					GUIController.Tab(Category.Update).collapsed = false;
-					GUIController.SwapToEntry("Custom Update");
+					case CurrentInput.Method:
+						methods = Utility.GetMethods(strinput);
+						break;
+					case CurrentInput.Type:
+						methods = Utility.GetTypeMethods(AccessTools.TypeByName(strinput));
+						break;
+					case CurrentInput.MethodHarmony:
+						methods = Utility.GetMethodsPatching(strinput);
+						break;
+					case CurrentInput.SubClasses:
+						methods = Utility.SubClassImplementationsOf(AccessTools.TypeByName(strinput), m => true);
+						break;
+					case CurrentInput.TypeHarmony:
+						methods = Utility.GetMethodsPatchingType(AccessTools.TypeByName(strinput));
+						break;
+					case CurrentInput.InternalMethod:
+						Utility.PatchInternalMethod(strinput, cat);
+						return;
+					case CurrentInput.Assembly:
+						Utility.PatchAssembly(strinput, cat);
+						return;
 				}
+
+				MethodTransplanting.UpdateMethods(entry, methods);
+				GUIController.Tab(cat).collapsed = false;
+
+				var entryName = (cat == Category.Tick) ? "Custom Tick" : "Custom Update";
+				GUIController.SwapToEntry(entryName);
 			}
 			catch (Exception e)
 			{
-				ThreadSafeLogger.Error($"Failed to process input, failed with the error {e.Message}");
+				ThreadSafeLogger.ReportException(e, $"Failed to process search bar input");
 			}
 		}
 	}

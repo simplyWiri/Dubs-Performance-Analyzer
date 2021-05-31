@@ -44,16 +44,19 @@ namespace Analyzer.Profiling
 
         public static void Message(string message)
         {
+            if (message == null) return;
             message = PrependTag(message);
             messages.Enqueue(new PendingMessage(message, new StackTrace(1, false), LogMessageType.Message));
         }
         public static void Warning(string message)
         {
+            if (message == null) return;
             message = PrependTag(message);
             messages.Enqueue(new PendingMessage(message, new StackTrace(1, false), LogMessageType.Warning));
         }
         public static void Error(string message)
         {
+            if (message == null) return;
             message = PrependTag(message);
             messages.Enqueue(new PendingMessage(message, new StackTrace(1, false), LogMessageType.Error));
         }

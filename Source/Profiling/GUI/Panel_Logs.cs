@@ -319,49 +319,6 @@ namespace Analyzer.Profiling
             }
         }
 
-        // doesn't work properly
-        //public static void DrawHover(ProfileLog log, Rect visible)
-        //{
-        //    if (log.meth != null)
-        //    {
-        //        if (log.label != tipLabelCache) // If we have a new label, re-create the string, else use our cached version.
-        //        {
-        //            tipLabelCache = log.label;
-        //            StringBuilder builder = new StringBuilder();
-        //            Patches patches = Harmony.GetPatchInfo(log.meth);
-        //            if (patches != null)
-        //            {
-        //                foreach (Patch patch in patches.Prefixes) GetString("Prefix", patch);
-        //                foreach (Patch patch in patches.Postfixes) GetString("Postfix", patch);
-        //                foreach (Patch patch in patches.Transpilers) GetString("Transpiler", patch);
-        //                foreach (Patch patch in patches.Finalizers) GetString("Finalizer", patch);
-
-        //                void GetString(string type, Patch patch)
-        //                {
-        //                    if (Utility.IsNotAnalyzerPatch(patch.owner))
-        //                    {
-        //                        if (patch.PatchMethod.DeclaringType != null)
-        //                        {
-        //                            string ass = patch.PatchMethod.DeclaringType.Assembly.FullName;
-        //                            string modName = "Unknown";
-        //                            try
-        //                            {
-        //                                modName = ModInfoCache.AssemblyToModname[ass];
-        //                            }
-        //                            catch { }
-
-        //                            builder.AppendLine($"{type} from {modName} with the index {patch.index} and the priority {patch.priority}\n");
-        //                        }
-        //                    }
-        //                }
-
-        //                tipCache = builder.ToString();
-        //            }
-        //        }
-        //        TooltipHandler.TipRegion(visible, tipCache);
-        //    }
-        //}
-
         public static void ClickWork(ProfileLog log, Profiler profile)
         {
             if (Event.current.button == 0) // left click
