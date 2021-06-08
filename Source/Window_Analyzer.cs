@@ -154,7 +154,7 @@ namespace Analyzer
 				}
 				catch (Exception e)
 				{
-					ThreadSafeLogger.Error(e.ToString());
+					ThreadSafeLogger.ReportException(e, "Failed to initialise entries");
 				}
 			}
 

@@ -29,19 +29,14 @@ namespace Analyzer.Profiling
         public static void ProfilePatch()
         {
             HarmonyMethod pre = new HarmonyMethod(typeof(H_TryIssueJobPackageTrans), nameof(Prefix));
-            HarmonyMethod post = new HarmonyMethod(typeof(H_TryIssueJobPackageTrans), nameof(Postfix));
             HarmonyMethod t = new HarmonyMethod(typeof(H_TryIssueJobPackageTrans), nameof(piler));
             MethodInfo o = AccessTools.Method(typeof(JobGiver_Work), nameof(JobGiver_Work.TryIssueJobPackage));
-            Modbase.Harmony.Patch(o, pre, post, t);
+            Modbase.Harmony.Patch(o, pre, null, t);
         }
 
         public static void Prefix(Pawn pawn)
         {
             pawnname = pawn?.Name?.ToStringShort ?? "";
-        }
-        public static void Postfix()
-        {
-            Stop(null);
         }
 
         private static string namer()
@@ -166,19 +161,16 @@ namespace Analyzer.Profiling
 
         private static bool MatchMethod(List<CodeInstruction> list, int index)
         {
-            try
-            {
-                return (list[index].opcode == OpCodes.Ldflda &&
-                        list[index - 1].opcode == OpCodes.Ldloc_0 &&
-                        list[index - 2].opcode == OpCodes.Endfinally &&
-                        list[index - 3].opcode == OpCodes.Leave_S);
-            }
-            catch (Exception) { return false; }
+            return index < list.Count - 2 &&
+                   (list[index    ].opcode == OpCodes.Ldflda &&
+                    list[index - 1].opcode == OpCodes.Ldloc_0 &&
+                    list[index - 2].opcode == OpCodes.Endfinally &&
+                    list[index - 3].opcode == OpCodes.Leave_S);
         }
     }
 
-
-    [Entry("entry.tick.jobgiverd", Category.Tick)]
+    // This does not seem to work as intended, so its been removed for now.
+    //[Entry("entry.tick.jobgiverd", Category.Tick)]
     internal class H_TryIssueJobPackage
     {
         [Setting("By Work Type")] public static bool ByWorkType = false;

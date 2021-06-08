@@ -39,11 +39,11 @@ namespace Analyzer.Profiling
                 catch (Exception e)
                 {
 #if DEBUG
-                        ThreadSafeLogger.Error($"[Analyzer] Failed to patch transpiler, failed with the message {e.Message}");
+                        ThreadSafeLogger.ReportException(e, $"[Analyzer] Failed to patch transpiler {Utility.GetSignature(meth, false)}");
 #endif
 #if NDEBUG
                     if (Settings.verboseLogging)
-                        ThreadSafeLogger.Error($"[Analyzer] Failed to patch transpiler {meth.DeclaringType.FullName + ":" + meth.Name}, failed with the message {e.Message}");
+                        ThreadSafeLogger.ReportException(e, $"[Analyzer] Failed to patch transpiler {Utility.GetSignature(meth, false)}");
 #endif
                 }
             }

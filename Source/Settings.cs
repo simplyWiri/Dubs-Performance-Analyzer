@@ -19,7 +19,7 @@ namespace Analyzer
         public static bool disableCleanup;
         public static bool disableTPSCounter;
         public static bool enableLog;
-        public static bool showIcon;
+        public static bool showIcon = true;
         public static HashSet<string> SavedPatches_Tick;
         public static HashSet<string> SavedPatches_Update;
 
@@ -29,8 +29,6 @@ namespace Analyzer
         {
             base.ExposeData();
 
-
-            Scribe_Values.Look(ref GraphSettings.lineAliasing, "lineAliasing", 7.5f);
             Scribe_Values.Look(ref GraphSettings.showMax, "showMax");
             Scribe_Values.Look(ref GraphSettings.showAxis, "showAxis", true);
             Scribe_Values.Look(ref GraphSettings.showGrid, "showGrid", true);

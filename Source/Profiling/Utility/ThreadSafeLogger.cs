@@ -28,26 +28,67 @@ namespace Analyzer.Profiling
     public static class ThreadSafeLogger
     {
         private static ConcurrentQueue<PendingMessage> messages = new ConcurrentQueue<PendingMessage>();
+        // ignore the value, no ConcurrentHashSet in the standard, this just avoids using a mutex-locked hashset
+        private static ConcurrentDictionary<int, byte> keys = new ConcurrentDictionary<int, byte>();
+
+        private const string MOD_TAG = "[Analyzer]";
+
+        public static string PrependTag(string message)
+        {
+            if (message.StartsWith(MOD_TAG)) return message;
+
+            var toInsert = MOD_TAG;
+            if (message.First() != ' ') toInsert += ' ';
+                
+            message = message.Insert(0, toInsert);
+
+            return message;
+        }
 
         public static void Message(string message)
         {
-            if (!message.StartsWith("[Analyzer]")) message = message.Insert(0, "[Analyzer]");
+            if (message == null) return;
+            message = PrependTag(message);
             messages.Enqueue(new PendingMessage(message, new StackTrace(1, false), LogMessageType.Message));
         }
         public static void Warning(string message)
         {
-            if (!message.StartsWith("[Analyzer]")) message = message.Insert(0, "[Analyzer]");
+            if (message == null) return;
+            message = PrependTag(message);
             messages.Enqueue(new PendingMessage(message, new StackTrace(1, false), LogMessageType.Warning));
         }
         public static void Error(string message)
         {
-            if (!message.StartsWith("[Analyzer]")) message = message.Insert(0, "[Analyzer]");
+            if (message == null) return;
+            message = PrependTag(message);
             messages.Enqueue(new PendingMessage(message, new StackTrace(1, false), LogMessageType.Error));
+        }
+
+        public static void ErrorOnce(string message, int key)
+        {
+            if (keys.ContainsKey(key)) return;
+            keys.TryAdd(key, 0);
+
+            Error(message);
+        }
+
+        public static void ReportException(Exception e, string message)
+        {
+            var finalMessage = $"{MOD_TAG} {message}, exception: {e.Message}, occured at \n{ExtractTrace(new StackTrace(e, false))}";
+            Error(finalMessage);
+        }
+
+        public static void ReportExceptionOnce(Exception e, string message, int key)
+        {
+            if (keys.ContainsKey(key)) return;
+            keys.TryAdd(key, 0);
+
+            ReportException(e, message);
         }
 
         public static void DisplayLogs()
         {
-            while (messages.TryDequeue(out PendingMessage res))
+            while (messages.TryDequeue(out var res))
             {
                 switch (res.severity)
                 {
@@ -74,49 +115,15 @@ namespace Analyzer.Profiling
             }
         }
 
-        public static string ExtractTrace(StackTrace stackTrace)
+        internal static string ExtractTrace(StackTrace stackTrace)
         {
-            StringBuilder stringBuilder = new StringBuilder(255);
+            var stringBuilder = new StringBuilder(255);
             for (int i = 0; i < stackTrace.FrameCount; i++)
             {
-                StackFrame frame = stackTrace.GetFrame(i);
-                MethodBase method = frame.GetMethod();
-                if ((object)method == null)
-                {
-                    continue;
-                }
-                Type declaringType = method.DeclaringType;
-                if ((object)declaringType == null)
-                {
-                    continue;
-                }
-                string @namespace = declaringType.Namespace;
-                if (@namespace != null && @namespace.Length != 0)
-                {
-                    stringBuilder.Append(@namespace);
-                    stringBuilder.Append(".");
-                }
-                stringBuilder.Append(declaringType.Name);
-                stringBuilder.Append(":");
-                stringBuilder.Append(method.Name);
-                stringBuilder.Append("(");
-                int j = 0;
-                ParameterInfo[] parameters = method.GetParameters();
-                bool flag = true;
-                for (; j < parameters.Length; j++)
-                {
-                    if (!flag)
-                    {
-                        stringBuilder.Append(", ");
-                    }
+                var method = stackTrace.GetFrame(i).GetMethod();
 
-                    else
-                    {
-                        flag = false;
-                    }
-                    stringBuilder.Append(parameters[j].ParameterType.Name);
-                }
-                stringBuilder.Append(")");
+                stringBuilder.Append("  at ");
+                stringBuilder.Append(Utility.GetSignature(method));
                 stringBuilder.Append("\n");
             }
             return stringBuilder.ToString();

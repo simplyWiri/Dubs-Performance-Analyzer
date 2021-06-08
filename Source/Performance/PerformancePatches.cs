@@ -11,7 +11,25 @@ namespace Analyzer.Performance
     {
         private static List<PerfPatch> perfPatches;
         public static Dictionary<string, Action> onDisabled = new Dictionary<string, Action>();
-        public static List<bool> allEnabled;
+
+        private static List<bool> allEnabled;
+
+        public static List<bool> AllEnabled
+        {
+            get
+            {
+                if (allEnabled.NullOrEmpty())
+                {
+                    allEnabled = new List<bool>();
+                    for (var i = 0; i < Enum.GetNames(typeof(PerformanceCategory)).Length; i++)
+                    {
+                        allEnabled.Add(false);
+                    }
+                }
+
+                return allEnabled;
+            }
+        }
 
         public static List<PerfPatch> Patches
         {
@@ -49,7 +67,7 @@ namespace Analyzer.Performance
         private static void DrawCategory(Listing_Standard standard, PerformanceCategory category, string stringifiedCat)
         {
             var stateChange = false;
-            var enableAll = allEnabled[(int) category];
+            var enableAll = AllEnabled[(int) category];
 
             if (category == PerformanceCategory.Removes)
             {
@@ -64,7 +82,7 @@ namespace Analyzer.Performance
                 if (DubGUI.Checkbox(rect, stringifiedCat, ref enableAll))
                 {
                     stateChange = true;
-                    allEnabled[(int)category] = enableAll;
+                    AllEnabled[(int)category] = enableAll;
                 }
             }
 
@@ -104,14 +122,6 @@ namespace Analyzer.Performance
         public static void ExposeData()
         {
             Scribe_Collections.Look(ref allEnabled, "allEnabled", LookMode.Value);
-            if (allEnabled.NullOrEmpty())
-            {
-                allEnabled = new List<bool>();
-                for (var i = 0; i < Enum.GetNames(typeof(PerformanceCategory)).Length; i++)
-                {
-                    allEnabled.Add(false);
-                }
-            }
 
             foreach (var patch in Patches)
             {

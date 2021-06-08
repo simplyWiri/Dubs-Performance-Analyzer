@@ -25,29 +25,37 @@ namespace Analyzer.Profiling
 #endif
         }
 
-        public static bool IsFunctionCall(OpCode instruction)
+
+        // We do *NOT* check for methods that are empty, or pure virtual, as they can still be dispatched and timed
+        // however we need do need to prevent them being internal patched.
+        public static bool ValidCallInstruction(List<CodeInstruction> instructions, int i, out MethodBase methodBase, out string key)
         {
-            return (instruction == OpCodes.Call || instruction == OpCodes.Callvirt);// || instruction == OpCodes.Calli);
+            methodBase = null;
+            key = null;
+
+            var instruction = instructions[i];
+            // needs to be Call || CallVirt
+            if ( !(instruction.opcode == OpCodes.Call || instruction.opcode == OpCodes.Callvirt)) return false;
+            // can not be constrained
+            if (i > 0 && instructions[i - 1].opcode == OpCodes.Constrained) return false;
+
+            methodBase = instruction.operand as MethodBase;
+            key = Utility.GetMethodKey(methodBase);
+
+            // Make sure it is not an analyzer profiling method
+            return !methodBase.DeclaringType.FullName.Contains("Analyzer.Profiling");
         }
 
         private static IEnumerable<CodeInstruction> Transpiler(MethodBase __originalMethod, IEnumerable<CodeInstruction> codeInstructions)
         {
             try
             {
-                List<CodeInstruction> instructions = codeInstructions.ToList();
+                var instructions = codeInstructions.ToList();
 
                 for (int i = 0; i < instructions.Count; i++)
                 {
-                    if (!IsFunctionCall(instructions[i].opcode)) continue;
-                    if (!(instructions[i].operand is MethodInfo meth)) continue;
-
-                    // Check for constrained
-                    if (i != 0 && instructions[i - 1].opcode == OpCodes.Constrained) continue;
-
-                    // Make sure it is not an analyzer profiling method
-                    if (meth.DeclaringType.FullName.Contains("Analyzer.Profiling")) continue;
-
-                    var key = Utility.GetMethodKey(meth);
+                    if (ValidCallInstruction(instructions, i, out var meth, out var key) == false) continue;
+                    
                     var index = MethodInfoCache.AddMethod(key, meth);
 
                     var inst = MethodTransplanting.ReplaceMethodInstruction(
@@ -65,16 +73,14 @@ namespace Analyzer.Profiling
             {
 
 #if DEBUG
-                ThreadSafeLogger.Error($"Failed to patch the internal method {__originalMethod.DeclaringType.FullName}:{__originalMethod.Name}, failed with the error " + e.Message);
+                ThreadSafeLogger.ReportException(e, $"Failed to patch the methods inside {Utility.GetSignature(__originalMethod, false)}");
 #else
                 if(Settings.verboseLogging)
-                    ThreadSafeLogger.Warning($"Failed to patch the internal method {__originalMethod.DeclaringType.FullName}:{__originalMethod.Name}, failed with the error " + e.Message);
+                    ThreadSafeLogger.ReportException(e, $"Failed to patch the methods inside {Utility.GetSignature(__originalMethod, false)}");
 #endif
 
                 return codeInstructions;
             }
         }
-
-
     }
 }

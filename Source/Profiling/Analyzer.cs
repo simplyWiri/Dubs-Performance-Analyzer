@@ -105,11 +105,11 @@ namespace Analyzer.Profiling
                 catch (Exception e)
                 {
 #if DEBUG
-                    ThreadSafeLogger.Error($"[Analyzer] Failed to patch entry, failed with the message {e.Message}");
+                    ThreadSafeLogger.ReportException($"[Analyzer] Failed to patch entry, failed with the message {e.Message}");
 #endif
 #if NDEBUG
                     if (Settings.verboseLogging)
-                        ThreadSafeLogger.Error($"[Analyzer] Failed to patch entry, failed with the message {e.Message}");
+                        ThreadSafeLogger.ReportException(e, $"[Failed to patch entry {entry?.name}");
 #endif
                 }
             });
@@ -125,7 +125,7 @@ namespace Analyzer.Profiling
         // o(n*m + n*log(n)); - Could maybe thread this some more, to push higher update speeds
         private static void ProfileCalculations(Dictionary<string, Profiler> Profiles, int currentLogCount, Comparer<ProfileLog> comparer)
         {
-            List<ProfileLog> newLogs = new List<ProfileLog>(Profiles.Count);
+            var newLogs = new List<ProfileLog>(Profiles.Count);
 
             double sumOfAverages = 0;
 
@@ -133,12 +133,13 @@ namespace Analyzer.Profiling
             {
                 // o(m)
                 value.CollectStatistics(Mathf.Min(currentLogCount, MAX_LOG_COUNT - 1), out var average, out var max, out var total, out var calls, out var maxCalls);
-                newLogs.Add(new ProfileLog(value.label, string.Empty, average, (float)max, null, value.key, string.Empty, 0, (float)total, calls, maxCalls, value.type, value.meth));
+                newLogs.Add(new ProfileLog(value.label, string.Empty, average, (float)max, null, value.key, string.Empty, 0, (float)total, calls, maxCalls, value.type, value.meth, value.pinned));
 
                 sumOfAverages += average;
             }
 
-            List<ProfileLog> sortedLogs = new List<ProfileLog>(newLogs.Count);
+            var sortedLogs = new List<ProfileLog>(newLogs.Count);
+            var pinnedLogs = new List<ProfileLog>();
 
             foreach (var log in newLogs) // o(n)
             {
@@ -147,8 +148,13 @@ namespace Analyzer.Profiling
                 log.percentString = adjustedAverage.ToStringPercent();
 
                 // o(logn)
-                BinaryInsertion(sortedLogs, log, comparer);
+                if(log.pinned is false)
+                    BinaryInsertion(sortedLogs, log, comparer);
+                else
+                    pinnedLogs.Add(log);
             }
+
+            sortedLogs.InsertRange(0, pinnedLogs);
 
             // Swap our old logs with the new ones
             lock (LogicLock)
@@ -218,7 +224,7 @@ namespace Analyzer.Profiling
             }
             catch(Exception e)
             {
-                ThreadSafeLogger.Error("Failed to cleanup analyzer, failed with the error " + e.Message);
+                ThreadSafeLogger.ReportException(e, "Failed to cleanup analyzer");
             }
 
 #if DEBUG 

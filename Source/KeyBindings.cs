@@ -56,7 +56,7 @@ namespace Analyzer
             }
             catch (Exception e)
             {
-                ThreadSafeLogger.Error(e.ToString());
+                ThreadSafeLogger.ReportException(e, "Error while creating the Analyzer window");
             }
 
             if (alertKey.KeyDownEvent)

@@ -71,7 +71,7 @@ namespace Analyzer.Profiling
                 ThreadSafeLogger.Warning($"[Analyzer] Already patched method {meth.DeclaringType.FullName + ":" + meth.Name}");
 #else
                 if (Settings.verboseLogging)
-                    ThreadSafeLogger.Warning($"[Analyzer] Already patched method {meth.DeclaringType.FullName + ":" + meth.Name}");
+                    ThreadSafeLogger.Warning($"[Analyzer] Already patched method {Utility.GetSignature(meth, false)}");
 #endif
                 return;
             }
@@ -88,10 +88,10 @@ namespace Analyzer.Profiling
                 catch (Exception e)
                 {
 #if DEBUG
-                    ThreadSafeLogger.Error($"[Analyzer] Failed to patch method {meth.DeclaringType.FullName + ":" + meth.Name} failed with the error {e.Message}");
+                ThreadSafeLogger.ReportException(e, $"Failed to patch the method {Utility.GetSignature(meth, false)}");
 #else
                     if (Settings.verboseLogging)
-                        ThreadSafeLogger.Warning($"[Analyzer] Failed to patch method {meth.DeclaringType.FullName}:{meth.Name} failed with the error {e.Message}");
+                        ThreadSafeLogger.ReportException(e, $"Failed to patch the method {Utility.GetSignature(meth, false)}");
 #endif
                 }
             });
@@ -294,8 +294,8 @@ namespace Analyzer.Profiling
         // this will be then used in the call to ProfileController.Start
         public static CodeInstruction ReplaceMethodInstruction(CodeInstruction inst, string key, Type type, int index)
         {
-            MethodInfo method = null;
-            try { method = (MethodInfo)inst.operand; } catch (Exception) { return inst; }
+            var method = inst.operand as MethodInfo;
+            if (method == null) return inst;
 
             Type[] parameters = null;
 

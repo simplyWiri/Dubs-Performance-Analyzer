@@ -18,16 +18,12 @@ namespace Analyzer.Profiling
         private static int PrevTicks;
         public static int TPSActual;
         
-       // public static string GarbageCollectionInfo { get; private set; }
-
         public static long totalBytesOfMemoryUsed;
 
         public static void Prefix()
         {
             if (Analyzer.CurrentlyProfiling)
             {
-              //  GarbageMan.Collect();
-
                 if (Time.unscaledTime > _timer)
                 {
                     int fps = (int)(1f / Time.unscaledDeltaTime);
@@ -39,10 +35,10 @@ namespace Analyzer.Profiling
                 {
                     if (Current.ProgramState == ProgramState.Playing)
                     {
-                        float TRM = Find.TickManager.TickRateMultiplier;
-                        int TPSTarget = (int)Math.Round(TRM == 0f ? 0f : 60f * TRM);
+                        var TRM = Find.TickManager.TickRateMultiplier;
+                        var TPSTarget = (int) Math.Round(TRM == 0f ? 0f : 60f * TRM);
 
-                        DateTime CurrTime = DateTime.Now;
+                        var CurrTime = DateTime.Now;
 
                         if (CurrTime.Second != PrevTime.Second)
                         {
@@ -54,7 +50,10 @@ namespace Analyzer.Profiling
                         tps = $"TPS: {TPSActual}({TPSTarget})";
                     }
                 }
-                catch (Exception) { }
+                catch (Exception e)
+                {
+                    ThreadSafeLogger.ReportException(e, "Failed to initialise Root_Update state, tps information is likely to be incorrect");
+                }
             }
 
             if (Active)

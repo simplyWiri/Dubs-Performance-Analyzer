@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Text;
+using HarmonyLib;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -20,6 +22,7 @@ namespace Analyzer.Profiling
         private static Material blitMaterial;
         private static Material blendMaterial;
         private static readonly Rect lineRect = new Rect(0, 0, 1, 1);
+        private static Material mat;
 
         static DubGUI()
         {
@@ -31,58 +34,59 @@ namespace Analyzer.Profiling
             return s.TranslateSimple();
         }
 
+
+
+        // https://forum.unity.com/attachments/unity-drawline-math-jpg.64496/
+        // for the relevant maths
         public static void DrawLine(Vector2 pointA, Vector2 pointB, Color color, float width, bool drawDouble = false)
         {
+            if (Event.current.type != EventType.Repaint) return;
+
             if (Prefs.UIScale > 1)
             {
                 Widgets.DrawLine(pointA, pointB, color, width);
                 return;
             }
 
-            var dx = pointB.x - pointA.x;
-            var dy = pointB.y - pointA.y;
-            var len = Mathf.Sqrt(dx * dx + dy * dy);
+            // current rect (0, 0, 1, 1)
+            // dx = pointB.x - pointA.x
+            // dy = pointB.y - pointA.y
+            // len = sqrt(dx^2 + dy^2)
+            // desired rotation = atan2(dy, dx)
+            // desired scale = (width*3), len
+            // desired translation = (width * dy / len), (width * dx / len)
 
-            if (len < 0.001f)
-            {
-                return;
-            }
+            var diffX = pointB.x - pointA.x;
+            var diffY = pointB.y - pointA.y;
+            var len = Mathf.Sqrt(diffX * diffX + diffY * diffY);
+
+            if (len < 0.001f) return;
 
             width *= 3.0f;
-            var wdx = width * dy / len;
-            var wdy = width * dx / len;
+            var sinX = (width * diffY / len);
+            var cosX = (width * diffX / len);
 
             var matrix = Matrix4x4.identity;
-            matrix.m00 = dx;
-            matrix.m01 = -wdx;
-            matrix.m03 = pointA.x + 0.5f * wdx;
-            matrix.m10 = dy;
-            matrix.m11 = wdy;
-            matrix.m13 = pointA.y - 0.5f * wdy;
+            // Scale
+            matrix[0, 0] = (float)(diffX);
+            matrix[1, 0] = (float)(diffY);
+
+            // Rotate
+            matrix[0, 1] = (float)-sinX;
+            matrix[1, 1] = (float)cosX;
+
+            var translation = pointA + new Vector2(0.5f * sinX, -0.5f * cosX);
+            // Transate
+            matrix[0, 3] = translation.x;
+            matrix[1, 3] = translation.y;
 
             GL.PushMatrix();
             GL.MultMatrix(matrix);
+
             for (var i = 0; i < (drawDouble ? 2 : 1); i++)
                 Graphics.DrawTexture(lineRect, aaLineTex, lineRect, 0, 0, 0, 0, color, blendMaterial);
+
             GL.PopMatrix();
-        }
-
-        public static void DrawBezierLine(Vector2 start, Vector2 startTangent, Vector2 end, Vector2 endTangent,
-            Color color, float width, int segments)
-        {
-            var lastV = CubeBezier(start, startTangent, end, endTangent, 0);
-            for (var i = 1; i < segments; ++i)
-            {
-                var v = CubeBezier(start, startTangent, end, endTangent, i / (float) segments);
-                DrawLine(lastV, v, color, width);
-                lastV = v;
-            }
-        }
-
-        private static Vector2 CubeBezier(Vector2 s, Vector2 st, Vector2 e, Vector2 et, float t)
-        {
-            var rt = 1 - t;
-            return rt * rt * rt * s + 3 * rt * rt * t * st + 3 * rt * t * t * et + t * t * t * e;
         }
 
         private static void Initialize()
@@ -102,6 +106,17 @@ namespace Analyzer.Profiling
                 aaLineTex.SetPixel(0, 2, new Color(1, 1, 1, 0));
                 aaLineTex.Apply();
             }
+
+            Shader shader = Shader.Find("Hidden/Internal-Colored");
+            mat = new Material (shader);
+            mat.hideFlags = HideFlags.HideAndDontSave;
+            //Turn on alpha blending
+            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            // Turn backface culling off
+            mat.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+            // Turn off depth writes
+            mat.SetInt("_ZWrite", 0);
 
             blitMaterial = (Material) typeof(GUI)
                 .GetMethod("get_blitMaterial", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, null);
