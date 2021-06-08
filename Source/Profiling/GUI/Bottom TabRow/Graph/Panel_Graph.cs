@@ -198,18 +198,22 @@ namespace Analyzer.Profiling
 
             box.ShiftX(5);
 
-            void jammydodger(ref Rect p, string s, ref bool r)
+            void jammydodger(ref Rect p, string s, ref bool r, string h)
             {
                 box.width = 20 + s.GetWidthCached();
                 CheckNewRow(ref box, ref p);
 
                 r = DrawButton(box, s, r);
+                if (h != null && Mouse.IsOver(box))
+                {
+                    TooltipHandler.TipRegion(box, h);
+                }
                 box.ShiftX(5);
             }
 
-            jammydodger(ref position, "Axis", ref GraphSettings.showAxis);
-            jammydodger(ref position, "Grid", ref GraphSettings.showGrid);
-            jammydodger(ref position, "Max", ref GraphSettings.showMax);
+            jammydodger(ref position, "Axis", ref GraphSettings.showAxis, null);
+            jammydodger(ref position, "Grid", ref GraphSettings.showGrid, "Grid will only show when the axis is also active");
+            jammydodger(ref position, "Max", ref GraphSettings.showMax, null);
 
             Text.Anchor = TextAnchor.UpperLeft;
 

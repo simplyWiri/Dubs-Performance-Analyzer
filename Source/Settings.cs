@@ -19,7 +19,7 @@ namespace Analyzer
         public static bool disableCleanup;
         public static bool disableTPSCounter;
         public static bool enableLog;
-        public static bool showIcon;
+        public static bool showIcon = true;
         public static HashSet<string> SavedPatches_Tick;
         public static HashSet<string> SavedPatches_Update;
 
