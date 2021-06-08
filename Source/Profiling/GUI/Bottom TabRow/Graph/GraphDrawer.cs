@@ -74,14 +74,14 @@ namespace Analyzer.Profiling
                 DrawMaxLine(rect, primaryEntry.absMax, primaryEntry.max, suffix);
             }
 
-            DrawEntries(rect, instance, entries, GraphSettings.lineAliasing);
+            DrawEntries(rect, instance, entries);
 
             if (GraphSettings.showAxis) GUI.EndGroup();
 
             GUI.EndGroup();
         }
 
-        internal static void DrawEntries(Rect rect, Panel_Graph instance, int entries, float aliasing)
+        internal static void DrawEntries(Rect rect, Panel_Graph instance, int entries)
         {
             if (Event.current.type != EventType.Repaint)
             {
@@ -92,12 +92,6 @@ namespace Analyzer.Profiling
 
             var timeCutoff = 0.0f;
             var callsCutoff = 0.0f;
-
-            if (aliasing != 0)
-            {
-                timeCutoff = instance.calls.max / rect.height / aliasing;
-                callsCutoff = instance.times.max / rect.height / aliasing;
-            }
 
             int i = 1, timesIndex = 0, callsIndex = 0;
 
@@ -150,8 +144,11 @@ namespace Analyzer.Profiling
 
             if (prevIndex != nextIndex - 1) // We have aliased a point (or multiple) we need to draw two lines.
             {
-                DubGUI.DrawLine(new Vector2(prevIndex * xIncrement, prevY), new Vector2((nextIndex - 1) * xIncrement, prevY), color, 1f, true);
-                DubGUI.DrawLine(new Vector2((nextIndex - 1) * xIncrement, prevY), new Vector2(nextIndex * xIncrement, nextY), color, 1f, true);
+                var prevDrawnPoint = new Vector2(prevIndex * xIncrement, prevY);
+                var prevPoint = new Vector2((nextIndex - 1) * xIncrement, prevY);
+                var curPoint = new Vector2(nextIndex * xIncrement, nextY);
+                DubGUI.DrawLine(prevDrawnPoint, prevPoint, color, 1f, true);
+                DubGUI.DrawLine(prevPoint, curPoint, color, 1f, true);
             }
             else
             {
@@ -199,6 +196,8 @@ namespace Analyzer.Profiling
 
         internal static void DrawGrid(Rect rect)
         {
+            if (Event.current.type != EventType.Repaint) return;
+
             var yIncrement = rect.height / 4f;
 
             for (var i = 0; i < 5; i++)

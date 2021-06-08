@@ -18,7 +18,6 @@ namespace Analyzer.Profiling
         public static bool showAxis;
         public static bool showGrid;
         public static bool showMax = true;
-        public static float lineAliasing; // Tweak if lines are merging too aggressively
         public Vector2 dragAnchor = new Vector2();
 
 
@@ -218,31 +217,6 @@ namespace Analyzer.Profiling
             CheckNewRow(ref box, ref position);
 
             instance.entryCount = (int)Widgets.HorizontalSlider(box.BottomPartPixels(30f), instance.entryCount, 10, 2000, true, string.Intern($"{instance.entryCount} Entries"));
-
-            box.ShiftX(5);
-
-
-            Text.Anchor = TextAnchor.MiddleCenter;
-            Text.Font = GameFont.Tiny;
-            str = $"Aliasing:{(GraphSettings.lineAliasing == 0 ? "none" : GraphSettings.lineAliasing.ToString())}";
-            box.width = str.GetWidthCached() + 10;
-            CheckNewRow(ref box, ref position);
-
-            if (Widgets.ButtonText(box, str, false))
-            {
-                GraphSettings.lineAliasing = GraphSettings.lineAliasing switch
-                {
-                    7.5f => 12.5f,
-                    12.5f => 0.0f,
-                    0.0f => 5.0f,
-                    5.0f => 7.5f,
-                    _ => 0.0f
-                };
-            }
-
-            box.ShiftX(5);
-
-            DubGUI.ResetFont();
         }
 
         internal int SetupArrays()
