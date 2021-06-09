@@ -335,7 +335,7 @@ namespace Analyzer.Profiling
         {
             foreach (MethodBase methodBase in Harmony.GetAllPatchedMethods())
             {
-                Patches infos = Harmony.GetPatchInfo(methodBase);
+                HarmonyLib.Patches infos = Harmony.GetPatchInfo(methodBase);
 
                 var allPatches = infos.Prefixes.Concat(infos.Postfixes, infos.Transpilers, infos.Finalizers);
 

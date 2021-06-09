@@ -45,7 +45,7 @@ namespace Analyzer.Profiling
                     MethodInfo mef = AccessTools.Method(allLeafSubclass, nameof(StatPart.TransformValue), new Type[] { typeof(StatRequest), typeof(float).MakeByRefType() });
                     if (mef.DeclaringType == allLeafSubclass)
                     {
-                        Patches info = Harmony.GetPatchInfo(mef);
+                        HarmonyLib.Patches info = Harmony.GetPatchInfo(mef);
                         bool F = true;
                         if (info != null)
                         {

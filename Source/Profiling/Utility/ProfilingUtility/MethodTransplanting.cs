@@ -278,7 +278,7 @@ namespace Analyzer.Profiling
                 }
                 else // Trying to intercept a param from the original method
                 {
-                    insts.Add(new CodeInstruction(OpCodes.Ldarg, origParams.FirstIndexOf(p => p.Name == param.Name && p.ParameterType == param.ParameterType)));
+                    insts.Add(new CodeInstruction(OpCodes.Ldarg_S, (originalMethod.IsStatic ? 0 : 1) + origParams.FirstIndexOf(p => p.Name == param.Name && p.ParameterType == param.ParameterType)));
                 }
             }
             return insts;

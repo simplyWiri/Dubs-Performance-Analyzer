@@ -96,11 +96,14 @@
 	
 	<!-- Tick -->
 
-  	<entry.tick.jobdrivertick>Job driver tick</entry.tick.jobdrivertick>
-  	<entry.tick.jobdrivertick.tooltip>A detoured profiler for the whole job driver tick including the cost of ticking each individual driver</entry.tick.jobdrivertick.tooltip>
+  	<entry.tick.jobdriver>Job Drivers</entry.tick.jobdriver>
+  	<entry.tick.jobdriver.tooltip>A breakdown of what is occuring in each job as it is being executed by a pawn</entry.tick.jobdriver.tooltip>
 
   	<entry.tick.single>Single Tick</entry.tick.single>
 	<entry.tick.single.tooltip>A variety of tick methods, including; World, History, FilthMonitor, Storyteller</entry.tick.single.tooltip>
+
+  	<entry.tick.thingcomp>Thing Comps</entry.tick.thingcomp>
+	<entry.tick.thingcomp.tooltip>Thing comps, these can be added to any ThingWithComp, this collects them all into one category</entry.tick.thingcomp.tooltip>
 
 	<entry.tick.pathfinder>Pathfinding</entry.tick.pathfinder>
 	<entry.tick.pathfinder.tooltip>Shows a variety of methods which are used in pathfinding</entry.tick.pathfinder.tooltip>
@@ -135,11 +138,11 @@
 	<entry.tick.things>Tick Things</entry.tick.things>
 	<entry.tick.things.tooltip>Profiles the ticking methods of various things on the map</entry.tick.things.tooltip>
 
-	<entry.tick.jobgiver>Work Giver</entry.tick.jobgiver>
-	<entry.tick.jobgiver.tooltip>Work Giver is only jobs done for work, that means all the jobs listed in the Work tab, this does not include jobs run by the ai for things like satisfying needs or optimizing apparel, those can be found in the ThinkNodes profile tab</entry.tick.jobgiver.tooltip>
+	<entry.tick.jobgiver>Job Giver</entry.tick.jobgiver>
+	<entry.tick.jobgiver.tooltip>All jobs which are manually looked for in the pawns thinktree, this includes work like satisfying needs, fleeing from danger, improving worn apparel etc</entry.tick.jobgiver.tooltip>
 
-	<entry.tick.jobgiverd>Job Giver (Detoured)</entry.tick.jobgiverd>
-	<entry.tick.jobgiverd.tooltip>Job Giver shows jobs which pro-actively seek out work to be done. For example. Fermenting barrels looking for ingredients, bills looking for resources, etc</entry.tick.jobgiverd.tooltip>
+	<entry.tick.workgiver>Work Giver</entry.tick.workgiver>
+	<entry.tick.workgiver.tooltip>Work Giver is only jobs done for work, that means all the jobs listed in the Work tab, this does not include jobs run by the ai for things like satisfying needs or optimizing apparel, those can be found in the ThinkNodes profile tab</entry.tick.workgiver.tooltip>
 
 	<entry.tick.world>World Tick</entry.tick.world>
 	<entry.tick.world.tooltip>Tick methods for various world entries, such as; WorldPawns, Factions, Caravans</entry.tick.world.tooltip>
