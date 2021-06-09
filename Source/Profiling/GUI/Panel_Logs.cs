@@ -14,12 +14,12 @@ namespace Analyzer.Profiling
 {
     public enum SortBy
     {
-        Max, Average, Percent, Total, Calls, Name
+        Max, Average, Percent, AvPc, Calls, Name
     }
 
     public struct TOTALS
     {
-        public double Max, Average, Percent, Total, Calls, Name;
+        public double Max, Average, Percent, Calls;
     }
 
     public static class Panel_Logs
@@ -40,9 +40,6 @@ namespace Analyzer.Profiling
 
 
         private static Vector2 ScrollPosition = Vector2.zero;
-
-        public static string tipCache = "";
-        public static string tipLabelCache = "";
 
         public static bool[] columns = { true, true, true, true, true, true };
 
@@ -121,10 +118,12 @@ namespace Analyzer.Profiling
             DrawColumnHeader(ref rect, Strings.logs_av, Strings.logs_av_desc, SortBy.Average, NUMERIC_WIDTH, $"{totals.Average:0.000}ms");
 
             DrawColumnHeader(ref rect, Strings.logs_percent, Strings.logs_percent_desc, SortBy.Percent, NUMERIC_WIDTH, $"{totals.Percent * 100:0.0}%");
-            DrawColumnHeader(ref rect, Strings.logs_total, Strings.logs_total_desc, SortBy.Total, NUMERIC_WIDTH, $"{totals.Total:0.000}ms");
 
             if (GUIController.CurrentEntry.type != typeof(H_HarmonyTranspilersInternalMethods))
+            {
                 DrawColumnHeader(ref rect, Strings.logs_calls, Strings.logs_calls_desc, SortBy.Calls, NUMERIC_WIDTH, $"{totals.Calls.ToString("N0", CultureInfo.InvariantCulture)}");
+                DrawColumnHeader(ref rect, Strings.logs_avpc, Strings.logs_avpc_desc, SortBy.AvPc, NUMERIC_WIDTH, "");
+            }
             // give the name 'infinite' width so there is no wrapping
             // Set text anchor to middle left so we can see our text
             // offset by four chars to make it look offset
@@ -236,7 +235,6 @@ namespace Analyzer.Profiling
             totals.Max += log.max;
             totals.Average += log.average;
             totals.Percent += log.percent;
-            totals.Total += log.total;
             totals.Calls += log.calls;
 
             Rect visible = listing.GetRect(BOX_HEIGHT);
@@ -284,10 +282,12 @@ namespace Analyzer.Profiling
             DrawColumnContents(ref visible, $" {log.max:0.000}ms ", SortBy.Max);
             DrawColumnContents(ref visible, $" {log.average:0.000}ms ", SortBy.Average);
             DrawColumnContents(ref visible, $" {log.percent * 100:0.0}% ", SortBy.Percent);
-            DrawColumnContents(ref visible, $" {log.total:0.000}ms ", SortBy.Total);
 
             if (GUIController.CurrentEntry.type != typeof(H_HarmonyTranspilersInternalMethods))
+            {
                 DrawColumnContents(ref visible, $" {log.calls.ToString("N0", CultureInfo.InvariantCulture)} ", SortBy.Calls);
+                DrawColumnContents(ref visible, $" {log.total/log.calls:0.000}ms ", SortBy.AvPc);
+            }
 
 
             if (profile.pinned)

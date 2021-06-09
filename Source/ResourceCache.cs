@@ -80,14 +80,14 @@ namespace Analyzer
         public static string logs_max => "logs.max".Tr();
         public static string logs_av => "logs.av".Tr();
         public static string logs_percent => "logs.percent".Tr();
-        public static string logs_total => "logs.total".Tr();
+        public static string logs_avpc => "logs.avpc".Tr();
         public static string logs_calls => "logs.calls".Tr();
         public static string logs_name => "logs.name".Tr();
 
         public static string logs_max_desc => "logs.max.desc".Tr();
         public static string logs_av_desc => "logs.av.desc".Tr();
         public static string logs_percent_desc => "logs.percent.desc".Tr();
-        public static string logs_total_desc => "logs.total.desc".Tr();
+        public static string logs_avpc_desc => "logs.avpc.desc".Tr();
         public static string logs_calls_desc => "logs.calls.desc".Tr();
         public static string logs_name_desc => "logs.name.desc".Tr();
     }

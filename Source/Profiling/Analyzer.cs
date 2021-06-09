@@ -20,12 +20,12 @@ namespace Analyzer.Profiling
         public static List<ProfileLog> logs = new List<ProfileLog>();
 
         // todo, how can I do this more elegantly?
-        private static Comparer<ProfileLog> maxComparer = Comparer<ProfileLog>.Create((ProfileLog first, ProfileLog second) => first.max < second.max ? 1 : -1);
-        private static Comparer<ProfileLog> averageComparer = Comparer<ProfileLog>.Create((ProfileLog first, ProfileLog second) => first.average < second.average ? 1 : -1);
-        private static Comparer<ProfileLog> percentComparer = Comparer<ProfileLog>.Create((ProfileLog first, ProfileLog second) => first.percent < second.percent ? 1 : -1);
-        private static Comparer<ProfileLog> totalComparer = Comparer<ProfileLog>.Create((ProfileLog first, ProfileLog second) => first.total < second.total ? 1 : -1);
-        private static Comparer<ProfileLog> callsComparer = Comparer<ProfileLog>.Create((ProfileLog first, ProfileLog second) => first.calls < second.calls ? 1 : -1);
-        private static Comparer<ProfileLog> nameComparer = Comparer<ProfileLog>.Create((ProfileLog first, ProfileLog second) => string.Compare(first.label, second.label));
+        private static Comparer<ProfileLog> maxComparer = Comparer<ProfileLog>.Create((first, second) => first.max < second.max ? 1 : -1);
+        private static Comparer<ProfileLog> averageComparer = Comparer<ProfileLog>.Create((first, second) => first.average < second.average ? 1 : -1);
+        private static Comparer<ProfileLog> percentComparer = Comparer<ProfileLog>.Create((first, second) => first.percent < second.percent ? 1 : -1);
+        private static Comparer<ProfileLog> avpcComparer = Comparer<ProfileLog>.Create((first, second) => (first.total/first.calls) < (second.total/second.calls) ? 1 : -1);
+        private static Comparer<ProfileLog> callsComparer = Comparer<ProfileLog>.Create((first, second) => first.calls < second.calls ? 1 : -1);
+        private static Comparer<ProfileLog> nameComparer = Comparer<ProfileLog>.Create((first, second) => string.Compare(first.label, second.label));
 
         private static object logicSync = new object();
 
@@ -79,7 +79,7 @@ namespace Analyzer.Profiling
                     case SortBy.Max: comparer = maxComparer; break;
                     case SortBy.Average: comparer = averageComparer; break;
                     case SortBy.Percent: comparer = percentComparer; break;
-                    case SortBy.Total: comparer = totalComparer; break;
+                    case SortBy.AvPc: comparer = avpcComparer; break;
                     case SortBy.Calls: comparer = callsComparer; break;
                     case SortBy.Name: comparer = nameComparer; break;
                 }
