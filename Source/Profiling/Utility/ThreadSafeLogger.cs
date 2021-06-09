@@ -74,7 +74,7 @@ namespace Analyzer.Profiling
 
         public static void ReportException(Exception e, string message)
         {
-            var finalMessage = $"{MOD_TAG} {message}, exception: {e.Message}, occured at \n{ExtractTrace(new StackTrace(e, false))}";
+            var finalMessage = $"{message}, exception: {e.Message}, occured at \n{ExtractTrace(new StackTrace(e, false))}";
             Error(finalMessage);
         }
 
