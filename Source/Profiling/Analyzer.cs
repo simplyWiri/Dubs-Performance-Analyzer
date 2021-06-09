@@ -26,6 +26,8 @@ namespace Analyzer.Profiling
         private static Comparer<ProfileLog> avpcComparer = Comparer<ProfileLog>.Create((first, second) => (first.total/first.calls) < (second.total/second.calls) ? 1 : -1);
         private static Comparer<ProfileLog> callsComparer = Comparer<ProfileLog>.Create((first, second) => first.calls < second.calls ? 1 : -1);
         private static Comparer<ProfileLog> nameComparer = Comparer<ProfileLog>.Create((first, second) => string.Compare(first.label, second.label));
+        private static Comparer<ProfileLog> totalComparer = Comparer<ProfileLog>.Create((first, second) => first.total < second.total ? 1 : -1);
+        private static Comparer<ProfileLog> callspuComparer = Comparer<ProfileLog>.Create((first, second) => (first.calls/first.entries) < (second.calls/second.entries) ? 1 : -1);
 
         private static object logicSync = new object();
 
@@ -71,21 +73,22 @@ namespace Analyzer.Profiling
         // Calculates stats for all active profilers (not only the currently selected one)
         internal static void FinishUpdateCycle()
         {
-            if (ProfileController.Profiles.Count != 0)
-            {
-                Comparer<ProfileLog> comparer = percentComparer;
-                switch (SortBy)
-                {
-                    case SortBy.Max: comparer = maxComparer; break;
-                    case SortBy.Average: comparer = averageComparer; break;
-                    case SortBy.Percent: comparer = percentComparer; break;
-                    case SortBy.AvPc: comparer = avpcComparer; break;
-                    case SortBy.Calls: comparer = callsComparer; break;
-                    case SortBy.Name: comparer = nameComparer; break;
-                }
+            if (ProfileController.Profiles.Count == 0) return;
 
-                Task.Factory.StartNew(() => ProfileCalculations(new Dictionary<string, Profiler>(ProfileController.Profiles), currentLogCount, comparer));
-            }
+            var comparer = SortBy switch
+            {
+                SortBy.Max => maxComparer,
+                SortBy.Average => averageComparer,
+                SortBy.Percent => percentComparer,
+                SortBy.AvPc => avpcComparer,
+                SortBy.Calls => callsComparer,
+                SortBy.Name => nameComparer,
+                SortBy.Total => totalComparer,
+                SortBy.CallsPu => callspuComparer,
+                _ => averageComparer // default to order by average
+            };
+
+            Task.Factory.StartNew(() => ProfileCalculations(new Dictionary<string, Profiler>(ProfileController.Profiles), currentLogCount, comparer));
         }
 
         public static void PatchEntry(Entry entry)
@@ -117,7 +120,7 @@ namespace Analyzer.Profiling
 
         public static void Cleanup()
         {
-            Task.Factory.StartNew(() => CleanupBackground());
+            Task.Factory.StartNew(CleanupBackground);
         }
 
         // n = count of profiles
@@ -133,7 +136,7 @@ namespace Analyzer.Profiling
             {
                 // o(m)
                 value.CollectStatistics(Mathf.Min(currentLogCount, MAX_LOG_COUNT - 1), out var average, out var max, out var total, out var calls, out var maxCalls);
-                newLogs.Add(new ProfileLog(value.label, string.Empty, average, (float)max, null, value.key, string.Empty, 0, (float)total, calls, maxCalls, value.type, value.meth, value.pinned));
+                newLogs.Add(new ProfileLog(currentLogCount, value.label, average, (float)max, value.key, (float)total, calls, maxCalls, value.type, value.meth, value.pinned));
 
                 sumOfAverages += average;
             }
@@ -143,15 +146,12 @@ namespace Analyzer.Profiling
 
             foreach (var log in newLogs) // o(n)
             {
-                float adjustedAverage = (float)(log.average / sumOfAverages);
+                var adjustedAverage = (float)(log.average / sumOfAverages);
                 log.percent = adjustedAverage;
-                log.percentString = adjustedAverage.ToStringPercent();
 
                 // o(logn)
-                if(log.pinned is false)
-                    BinaryInsertion(sortedLogs, log, comparer);
-                else
-                    pinnedLogs.Add(log);
+                if(log.pinned is false) BinaryInsertion(sortedLogs, log, comparer);
+                else pinnedLogs.Add(log);
             }
 
             sortedLogs.InsertRange(0, pinnedLogs);

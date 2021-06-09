@@ -10,7 +10,6 @@ namespace Analyzer.Profiling
         public static LogStats stats;
     }
 
-
     public class LogStats
     {
         public int Entries = -1;
@@ -21,7 +20,6 @@ namespace Analyzer.Profiling
         public double MeanCallsPerUpdateCycle;
         public double MeanTimePerCall;
 
-
         // Mean
         public double MeanTimePerUpdateCycle;
         public int MedianCalls;
@@ -30,8 +28,6 @@ namespace Analyzer.Profiling
         public double MedianTime;
 
         // General
-        public double OutlierCutoff;
-        public List<double> Spikes = new List<double>(); // above 3 standard deviations of the mean
         public int TotalCalls;
 
         // Total
@@ -93,8 +89,7 @@ namespace Analyzer.Profiling
                 // general
                 logic.Entries = currentLogCount;
 
-                lock (CurrentLogStats.sync
-                ) // Dump our current statistics into our static class which our drawing class uses
+                lock (CurrentLogStats.sync) // Dump our current statistics into our static class which our drawing class uses
                 {
                     CurrentLogStats.stats = logic;
                 }

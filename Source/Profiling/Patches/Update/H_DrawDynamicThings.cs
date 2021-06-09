@@ -70,7 +70,7 @@ namespace Analyzer.Profiling
                                         name = thing.GetType().Name;
                                     }
 
-                                    var prof = ProfileController.Start(name, Namer, thing.GetType(), thing.def, null, __originalMethod);
+                                    var prof = ProfileController.Start(name, Namer, thing.GetType(), __originalMethod);
                                     thing.Draw();
                                     prof.Stop();
                                 }

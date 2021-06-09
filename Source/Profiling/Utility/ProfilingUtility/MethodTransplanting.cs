@@ -30,7 +30,7 @@ namespace Analyzer.Profiling
         // profiler
         private static readonly MethodInfo Profiler_Start = AccessTools.Method(typeof(Profiler), nameof(Profiler.Start));
         private static readonly MethodInfo Profiler_Stop = AccessTools.Method(typeof(Profiler), nameof(Profiler.Stop));
-        private static readonly ConstructorInfo ProfilerCtor = AccessTools.Constructor(typeof(Profiler), new Type[] { typeof(string), typeof(string), typeof(Type), typeof(Def), typeof(Thing), typeof(MethodBase) });
+        private static readonly ConstructorInfo ProfilerCtor = AccessTools.Constructor(typeof(Profiler), new Type[] { typeof(string), typeof(string), typeof(Type), typeof(MethodBase) });
 
         // analyzer
         private static readonly MethodInfo Analyzer_Get_CurrentlyProfiling = AccessTools.Method(typeof(Analyzer), "get_CurrentlyProfiling");
@@ -194,9 +194,6 @@ namespace Analyzer.Profiling
                     }
                 }
 
-                yield return new CodeInstruction(OpCodes.Ldnull);
-                yield return new CodeInstruction(OpCodes.Ldnull);
-
                 { // get our methodinfo from the metadata
                     foreach (var inst in MethodInfoCache.GetInlineIL(methodKey))
                         yield return inst;
@@ -355,8 +352,6 @@ namespace Analyzer.Profiling
             ilGen.Emit(OpCodes.Ldstr, key);
             // load our string to stack
 
-            ilGen.Emit(OpCodes.Ldnull);
-            ilGen.Emit(OpCodes.Ldnull);
             ilGen.Emit(OpCodes.Ldnull);
             ilGen.Emit(OpCodes.Ldnull);
             // load our null variables

@@ -38,7 +38,7 @@ namespace Analyzer.Profiling
 
                     var name = __instance.layers[i].GetType().Name;
 
-                    var prof = ProfileController.Start(name, Namer, __instance.layers[i].GetType(), null, null, __originalMethod);
+                    var prof = ProfileController.Start(name, Namer, __instance.layers[i].GetType(), __originalMethod);
                     __instance.layers[i].DrawLayer();
                     prof.Stop();
                 }

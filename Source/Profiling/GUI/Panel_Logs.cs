@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using NAudio.Wave;
 using UnityEngine;
 using Verse;
 using Verse.Noise;
@@ -14,12 +15,106 @@ namespace Analyzer.Profiling
 {
     public enum SortBy
     {
-        Max, Average, Percent, AvPc, Calls, Name
+        Average,
+        Max, 
+        Calls, 
+        AvPc,
+        Percent,
+        Name,
+        Total,
+        CallsPu
     }
 
-    public struct TOTALS
+    public class Column : IExposable
     {
-        public double Max, Average, Percent, Calls;
+        public Column() {}
+        public Column(SortBy i, bool a)
+        {
+            this.active = a;
+            this.sortBy = i;
+            this.total = 0;
+            this.order = (int) i;
+            if (i == SortBy.Name) order = 999;
+        }
+
+        public SortBy sortBy;
+        public bool active;
+        public double total;
+        public int order;
+
+        public string Name
+        {
+            get
+            {
+                switch (sortBy)
+                {
+                    case SortBy.Average: return Strings.logs_av;
+                    case SortBy.Max: return Strings.logs_max;
+                    case SortBy.Calls: return Strings.logs_calls;
+                    case SortBy.AvPc: return Strings.logs_avpc;
+                    case SortBy.Percent: return Strings.logs_percent;
+                    case SortBy.Name: return Strings.logs_name;
+                    case SortBy.Total: return Strings.logs_total;
+                    case SortBy.CallsPu: return Strings.logs_callspu;
+                }
+
+                return null;
+            }
+        }
+
+        public string Desc
+        {
+            get
+            {
+                switch (sortBy)
+                {
+                    case SortBy.Average: return Strings.logs_av_desc;
+                    case SortBy.Max: return Strings.logs_max_desc;
+                    case SortBy.Calls: return Strings.logs_calls_desc;
+                    case SortBy.AvPc: return Strings.logs_avpc_desc;
+                    case SortBy.Percent: return Strings.logs_percent_desc;
+                    case SortBy.Name: return Strings.logs_name_desc;
+                    case SortBy.Total: return Strings.logs_total_desc;
+                    case SortBy.CallsPu: return Strings.logs_callspu_desc;
+                }
+
+                return null;
+            }
+        }
+
+        public string Value(ProfileLog log)
+        {
+            switch (sortBy)
+            {
+                case SortBy.Average: return $" {log.average:0.000}ms ";
+                case SortBy.Max: return $" {log.max:0.000}ms ";
+                case SortBy.Calls: return $" {log.calls.ToString("N0", CultureInfo.InvariantCulture)} ";
+                case SortBy.AvPc: return $" {log.total/log.calls:0.000}ms ";
+                case SortBy.Percent: return $" {log.percent * 100:0.0}% ";
+                case SortBy.Name: return "    " + log.label;
+                case SortBy.Total: return $" {log.total:0.000}ms ";
+                case SortBy.CallsPu: return $" {Mathf.CeilToInt(log.calls/log.entries).ToString("N0", CultureInfo.InvariantCulture)} ";
+            }
+
+            return "";
+        }
+
+        public bool Active(Type curEntry)
+        {
+            var transpilersType = typeof(H_HarmonyTranspilersInternalMethods);
+
+            if ((sortBy == SortBy.Calls || sortBy == SortBy.AvPc || sortBy == SortBy.CallsPu) && transpilersType == curEntry)
+                return false;
+
+            return active;
+        }
+
+        public void ExposeData()
+        {
+            Scribe_Values.Look(ref sortBy, "sortBy");
+            Scribe_Values.Look(ref active, "active");
+            Scribe_Values.Look(ref order, "order");
+        }
     }
 
     public static class Panel_Logs
@@ -27,23 +122,32 @@ namespace Analyzer.Profiling
         private static Listing_Standard listing = new Listing_Standard { maxOneColumn = true };
         private static Rect viewFrustum;
 
-
-
         private const float BOX_HEIGHT = 40f;
-        private const float LABEL_OFFSET = 200f;
         private const float ARBITRARY_OFFSET = 4f;
         private const float ARBITRARY_CLOSED_OFFSET = 12f;
         private const string NUMERICAL_DUMMY_STRING = " xxxx.xxxxms ";
-        private const SortBy DEFAULT_SORTBY = SortBy.Percent;
+        private const SortBy DEFAULT_SORTBY = SortBy.Average;
 
         private static float NUMERIC_WIDTH => Text.CalcSize(NUMERICAL_DUMMY_STRING).x + ARBITRARY_OFFSET;
 
-
         private static Vector2 ScrollPosition = Vector2.zero;
 
-        public static bool[] columns = { true, true, true, true, true, true };
+        public static List<Column> columns = null;
 
-        public static TOTALS totals;
+        public static void Initialise()
+        {
+            if (columns != null) return;
+
+            var enumLength = typeof(SortBy).GetEnumValues().Length;
+            columns = new List<Column>();
+
+            for(var i = 0; i < enumLength; i++)
+            {
+                var val = (SortBy) i;
+
+                columns.Add(new Column(val, i <= 5));
+            }
+        }
 
 
         public static void DrawLogs(Rect rect)
@@ -59,7 +163,7 @@ namespace Analyzer.Profiling
             var columnsR = rect.TopPartPixels(50f);
             DrawColumns(columnsR);
 
-            totals = new TOTALS();
+            columns[(int)SortBy.Average].total = 0;
 
             rect.AdjustVerticallyBy(columnsR.height + 4);
             rect.height -= 2f;
@@ -112,70 +216,68 @@ namespace Analyzer.Profiling
             GUI.color = Color.grey;
             Widgets.DrawLineHorizontal(rect.x, rect.yMax, rect.width);
             GUI.color = Color.white;
-            // [ Max ] [ Average ] [ Percent ] [ Total ] [ Calls ] [ Name ] 
 
-            DrawColumnHeader(ref rect, Strings.logs_max, Strings.logs_max_desc, SortBy.Max, NUMERIC_WIDTH, $"{totals.Max:0.000}ms");
-            DrawColumnHeader(ref rect, Strings.logs_av, Strings.logs_av_desc, SortBy.Average, NUMERIC_WIDTH, $"{totals.Average:0.000}ms");
+            var rhs = rect.RightPartPixels(30);
+            rhs.x += 5;
+            rhs.width -= 10;
+            rhs.y = rhs.center.y - 10;
+            rhs.height = 20;
 
-            DrawColumnHeader(ref rect, Strings.logs_percent, Strings.logs_percent_desc, SortBy.Percent, NUMERIC_WIDTH, $"{totals.Percent * 100:0.0}%");
-
-            if (GUIController.CurrentEntry.type != typeof(H_HarmonyTranspilersInternalMethods))
+            foreach (var column in columns.Where(c => c.Active(GUIController.CurrentEntry.type)).OrderBy(c => c.order))
             {
-                DrawColumnHeader(ref rect, Strings.logs_calls, Strings.logs_calls_desc, SortBy.Calls, NUMERIC_WIDTH, $"{totals.Calls.ToString("N0", CultureInfo.InvariantCulture)}");
-                DrawColumnHeader(ref rect, Strings.logs_avpc, Strings.logs_avpc_desc, SortBy.AvPc, NUMERIC_WIDTH, "");
+                if(column.sortBy == SortBy.Name)
+                    Text.Anchor = TextAnchor.MiddleLeft;
+
+                DrawColumnHeader(ref rect, column);
             }
-            // give the name 'infinite' width so there is no wrapping
-            // Set text anchor to middle left so we can see our text
-            // offset by four chars to make it look offset
-            Text.Anchor = TextAnchor.MiddleLeft;
-            DrawColumnHeader(ref rect, "    " + Strings.logs_name, Strings.logs_name_desc, SortBy.Name, 10000);
+
+            TooltipHandler.TipRegion(rhs, "Change what columns are visible");
+            if (Mouse.IsOver(rhs) && Event.current.button == 1)
+            {
+                var opts = new List<FloatMenuOption>();
+                foreach (var col in columns)
+                {
+                    opts.Add(new FloatMenuOption(col.Name, () => col.active = !col.active, col.active ? Widgets.CheckboxOnTex : Widgets.CheckboxOffTex, Color.gray));
+                }
+                Find.WindowStack.Add(new FloatMenu(opts));
+            }
+            GUI.DrawTexture(rhs, Textures.Gear);
+
             DubGUI.ResetFont();
         }
 
-        private static void DrawColumnHeader(ref Rect inRect, string name, string desc, SortBy value, float width, string totalReadout = "")
+        private static void DrawColumnHeader(ref Rect inRect, Column c)
         {
-            bool closed = false;
-            if (!columns[(int)value]) // If our column is currently collapsed
-            {
-                if (value != SortBy.Name)
-                    width = ARBITRARY_CLOSED_OFFSET;
-                closed = true;
-            }
-
             Widgets.DrawOptionBackground(inRect, false);
 
-            var rect = inRect.LeftPartPixels(width);
+            var rect = inRect.LeftPartPixels(NUMERIC_WIDTH);
 
-            if (closed is false)
+            if (c.total != 0)
             {
-                //  Text.Font = GameFont.Small;
-                Widgets.Label(rect.TopHalf(), name);
-                if (totalReadout != string.Empty)
-                {
-                    // Text.Font = GameFont.Tiny;
-                    Widgets.Label(rect.BottomHalf(), totalReadout);
-                }
+                Widgets.Label(rect.TopHalf(), c.Name);
+                Widgets.Label(rect.BottomHalf(), $"{c.total:0.000}ms");
             }
-
-            if (Analyzer.SortBy == value) Widgets.DrawHighlight(rect);
+            else
+            {
+                Widgets.Label(rect, (c.sortBy == SortBy.Name ? "    " : "") + c.Name);
+            }
+            
+            if (Analyzer.SortBy == c.sortBy) 
+                Widgets.DrawHighlight(rect);
 
             if (Widgets.ButtonInvisible(rect))
-            { // sort by 'max'
+            { 
                 if (Event.current.button == 0) // left click, change sort by
                 {
-                    if (Analyzer.SortBy == value) Analyzer.SortBy = DEFAULT_SORTBY;
-                    else Analyzer.SortBy = value;
-                }
-                else // middle / right, close the tab
-                {
-                    columns[(int)value] = !columns[(int)value];
+                    Analyzer.SortBy = Analyzer.SortBy == c.sortBy ? DEFAULT_SORTBY : c.sortBy;
                 }
             }
-            TooltipHandler.TipRegion(rect, desc);
 
-            if (value != SortBy.Name)
+            TooltipHandler.TipRegion(rect, c.Desc);
+
+            if (c.sortBy != SortBy.Name)
             {
-                inRect.AdjustHorizonallyBy(width);
+                inRect.AdjustHorizonallyBy(NUMERIC_WIDTH);
 
                 GUI.color = Color.grey;
                 Widgets.DrawLineVertical(inRect.x, rect.y, rect.height);
@@ -189,18 +291,6 @@ namespace Analyzer.Profiling
             if (s == string.Empty)
             {
                 Panel_TopRow.MatchType = string.Empty;
-                return true;
-            }
-
-            if (log.def != null && log.def.defName.ContainsCaseless(s))
-            {
-                Panel_TopRow.MatchType = "Def";
-                return true;
-            }
-
-            if (log.mod.ContainsCaseless(s))
-            {
-                Panel_TopRow.MatchType = "Mod";
                 return true;
             }
 
@@ -232,12 +322,9 @@ namespace Analyzer.Profiling
                 return;
             }
 
-            totals.Max += log.max;
-            totals.Average += log.average;
-            totals.Percent += log.percent;
-            totals.Calls += log.calls;
+            columns[(int)SortBy.Average].total += log.average;
 
-            Rect visible = listing.GetRect(BOX_HEIGHT);
+            var visible = listing.GetRect(BOX_HEIGHT);
 
             if (!visible.Overlaps(viewFrustum)) // if we don't overlap, continue, but continue to adjust for further logs.
             {
@@ -248,7 +335,6 @@ namespace Analyzer.Profiling
             }
 
             var profile = ProfileController.Profiles[log.key];
-
 
             // Is this entry currently 'active'?
             if (GUIController.CurrentEntry.onSelect != null)
@@ -271,37 +357,18 @@ namespace Analyzer.Profiling
 
             // Colour a fillable bar below the log depending on the % fill of a log
             var colour = Textures.grey;
-            //  if (log.percent <= .25f) colour = Textures.grey; // <= 25%
-            //  else if (log.percent <= .75f) colour = Textures.blue; //  25% < x <=75%
-            //   else if (log.percent <= .999) colour = Textures.red; // 75% < x <= 99.99% (we want 100% to be grey)
+            if (log.percent <= .25f) colour = Textures.grey; // <= 25%
+            else if (log.percent <= .75f) colour = Textures.blue; //  25% < x <=75%
+            else if (log.percent <= .999) colour = Textures.red; // 75% < x <= 99.99% (we want 100% to be grey)
 
             Widgets.FillableBar(visible.BottomPartPixels(8f), log.percent, colour, Textures.clear, false);
 
             Text.Anchor = TextAnchor.MiddleCenter;
 
-            DrawColumnContents(ref visible, $" {log.max:0.000}ms ", SortBy.Max);
-            DrawColumnContents(ref visible, $" {log.average:0.000}ms ", SortBy.Average);
-            DrawColumnContents(ref visible, $" {log.percent * 100:0.0}% ", SortBy.Percent);
-
-            if (GUIController.CurrentEntry.type != typeof(H_HarmonyTranspilersInternalMethods))
+            foreach (var column in columns.Where(c => c.Active(GUIController.CurrentEntry.type)).OrderBy(c => c.order))
             {
-                DrawColumnContents(ref visible, $" {log.calls.ToString("N0", CultureInfo.InvariantCulture)} ", SortBy.Calls);
-                DrawColumnContents(ref visible, $" {log.total/log.calls:0.000}ms ", SortBy.AvPc);
+                DrawColumnContents(ref visible, column, column.Value(log), profile);
             }
-
-
-            if (profile.pinned)
-            {
-                var iconRect = new Rect(visible.x, visible.y + visible.height/4.0f, Text.LineHeight, Text.LineHeight);
-                visible.x += Text.LineHeight;
-
-                GUI.DrawTexture(iconRect, Textures.pin);
-            }
-
-
-            Text.Anchor = TextAnchor.MiddleLeft;
-            visible.width = 10000;
-            DrawColumnContents(ref visible, "    " + log.label, SortBy.Name);
 
             GUI.color = Color.white;
 
@@ -309,18 +376,24 @@ namespace Analyzer.Profiling
             currentListHeight += (BOX_HEIGHT + 4);
         }
 
-        public static void DrawColumnContents(ref Rect rect, string str, SortBy value)
+        public static void DrawColumnContents(ref Rect rect, Column c, string value, Profiler profile)
         {
+            if (c.sortBy == SortBy.Name)
+            {
+                if (profile.pinned)
+                {
+                    var iconRect = new Rect(rect.x, rect.y + rect.height/4.0f, Text.LineHeight, Text.LineHeight);
+                    rect.x += Text.LineHeight;
 
-            if (columns[(int)value])
-            {
-                Widgets.Label(value == SortBy.Name ? rect : rect.LeftPartPixels(NUMERIC_WIDTH), str);
-                rect.x += NUMERIC_WIDTH;
+                    GUI.DrawTexture(iconRect, Textures.pin);
+                }
+
+                Text.Anchor = TextAnchor.MiddleLeft;
+                rect.width = 10000;
             }
-            else
-            {
-                rect.x += ARBITRARY_CLOSED_OFFSET;
-            }
+
+            Widgets.Label(c.sortBy == SortBy.Name ? rect : rect.LeftPartPixels(NUMERIC_WIDTH), value);
+            rect.x += NUMERIC_WIDTH;
         }
 
         public static void ClickWork(ProfileLog log, Profiler profile)

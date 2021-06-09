@@ -87,7 +87,7 @@ namespace Analyzer.Profiling
                     state = __originalMethod.GetType().ToString();
                 }
 
-                __state = ProfileController.Start(state, null, null, null, null, __originalMethod);
+                __state = ProfileController.Start(state, null, null, __originalMethod);
             }
         }
 
@@ -127,7 +127,7 @@ namespace Analyzer.Profiling
                     slag = $"{__instance.stat.defName} GetValueUnfinalized";
                 }
 
-                Profiler prof = ProfileController.Start(slag, null, null, null, null, __originalMethod);
+                Profiler prof = ProfileController.Start(slag, null, null, __originalMethod);
                 float valueUnfinalized = sw.GetValueUnfinalized(req, applyPostProcess);
                 prof.Stop();
 
@@ -140,7 +140,7 @@ namespace Analyzer.Profiling
                     slag = $"{__instance.stat.defName} FinalizeValue";
                 }
 
-                prof = ProfileController.Start(slag, null, null, null, null, __originalMethod);
+                prof = ProfileController.Start(slag, null, null, __originalMethod);
                 sw.FinalizeValue(req, ref valueUnfinalized, applyPostProcess);
                 prof.Stop();
 
@@ -188,7 +188,7 @@ namespace Analyzer.Profiling
                     state = $"{stat.defName} abstract";
                 }
 
-                __state = ProfileController.Start(state, null, null, null, null, __originalMethod);
+                __state = ProfileController.Start(state, null, null, __originalMethod);
             }
         }
 
@@ -208,7 +208,7 @@ namespace Analyzer.Profiling
                     state = $"{stat.defName} abstract";
                 }
 
-                __state = ProfileController.Start(state, null, null, null, null, __originalMethod);
+                __state = ProfileController.Start(state, null, null, __originalMethod);
             }
         }
 

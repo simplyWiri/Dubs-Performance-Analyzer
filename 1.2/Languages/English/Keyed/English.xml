@@ -62,6 +62,9 @@
 	<logs.avpc>Av Per Call</logs.avpc>
 	<logs.calls>Calls</logs.calls>
 	<logs.name>Name</logs.name>
+	<logs.total>Total</logs.total>
+	<logs.callspu>Av Calls Per Update</logs.callspu>
+
 
 	<logs.max.desc>Sort the rows by the maximum (MS) peak the method has reached</logs.max.desc>
 	<logs.av.desc>Sort the rows by the average (MS) the method is reaching</logs.av.desc>
@@ -69,7 +72,8 @@
 	<logs.avpc.desc>Sort the rows by the average per call (MS)</logs.avpc.desc>
 	<logs.calls.desc>Sort the rows by total amount of calls</logs.calls.desc>
 	<logs.name.desc>Sort the rows in alphabetical order</logs.name.desc>
-
+	<logs.total.desc>Sort the rows by total (MS) impact</logs.total.desc>
+	<logs.callspu.desc>Sort the rows by average calls per update</logs.callspu.desc>
 	<!-- Entry -->
 
 	<!-- GUI -->

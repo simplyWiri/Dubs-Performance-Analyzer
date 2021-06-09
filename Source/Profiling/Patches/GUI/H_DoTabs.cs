@@ -36,7 +36,7 @@ namespace Analyzer.Profiling
                 __state = string.Intern($"{tab.GetType()}");
             }
 
-            ProfileController.Start(__state, null, tab.GetType(), null, null, __originalMethod);
+            ProfileController.Start(__state, null, tab.GetType(), __originalMethod);
 
             return true;
         }

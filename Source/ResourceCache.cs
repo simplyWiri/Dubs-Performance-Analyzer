@@ -21,7 +21,7 @@ namespace Analyzer
         public static readonly Texture2D hueMark = ContentFinder<Texture2D>.Get("DPA/UI/hueMark");
         public static readonly Texture2D hsbMark = ContentFinder<Texture2D>.Get("DPA/UI/hsbMark");
 
-        public static Texture2D Menu = ContentFinder<Texture2D>.Get("DPA/UI/MenuSett", false);
+        public static Texture2D Gear = ContentFinder<Texture2D>.Get("DPA/UI/MenuSett", false);
         public static Texture2D MintSearch = ContentFinder<Texture2D>.Get("DPA/UI/MintSearch", false);
         public static Texture2D DropDown = ContentFinder<Texture2D>.Get("DPA/UI/dropdown", false);
         public static Texture2D FoldUp = ContentFinder<Texture2D>.Get("DPA/UI/foldup", false);
@@ -83,6 +83,8 @@ namespace Analyzer
         public static string logs_avpc => "logs.avpc".Tr();
         public static string logs_calls => "logs.calls".Tr();
         public static string logs_name => "logs.name".Tr();
+        public static string logs_total => "logs.total".Tr();
+        public static string logs_callspu => "logs.callspu".Tr();
 
         public static string logs_max_desc => "logs.max.desc".Tr();
         public static string logs_av_desc => "logs.av.desc".Tr();
@@ -90,5 +92,7 @@ namespace Analyzer
         public static string logs_avpc_desc => "logs.avpc.desc".Tr();
         public static string logs_calls_desc => "logs.calls.desc".Tr();
         public static string logs_name_desc => "logs.name.desc".Tr();
+        public static string logs_total_desc => "logs.total.desc".Tr();
+        public static string logs_callspu_desc => "logs.callspu.desc".Tr();
     }
 }

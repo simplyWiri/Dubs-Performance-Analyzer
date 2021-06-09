@@ -79,7 +79,7 @@ namespace Analyzer.Profiling.Patches.Tick
                 if (PerPawn) label += $" - {p?.Name?.ToStringShort}";
 
                 return label;
-            }, null, null, null, meth);
+            }, null, meth);
         }
 
         public static void Stop(Profiler profiler)
