@@ -201,6 +201,9 @@
 	<entry.update.uiroot>UI Root Update</entry.update.uiroot>
 	<entry.update.uiroot.tooltip>A variety of update methods for GUI-related functionality, such as; AlertsReadout, Messages, Tutor</entry.update.uiroot.tooltip>
 
+	<entry.update.thoughtworker>Thought Workers</entry.update.thoughtworker>
+	<entry.update.thoughtworker.tooltip>Thought Workers, these drive the updates of pawns thoughts</entry.update.thoughtworker.tooltip>
+
 	<entry.update.frametimes>Frame times</entry.update.frametimes>
 	<entry.update.frametimes.tooltip>Shows entries which correlate to the frame times of your game (how long does each frame take to complete)</entry.update.frametimes.tooltip>
 

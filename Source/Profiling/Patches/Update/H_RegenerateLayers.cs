@@ -15,7 +15,11 @@ namespace Analyzer.Profiling
 
         public static bool Active = false;
 
-        public static IEnumerable<MethodInfo> GetPatchMethods() => typeof(SectionLayer).AllSubclasses().Select(sl => sl.GetMethod("Regenerate"));
+        public static IEnumerable<MethodInfo> GetPatchMethods() => typeof(SectionLayer).AllSubclasses().Select(sl =>
+        {
+            var m = AccessTools.Method(sl, "Regenerate");
+            return m.DeclaringType == sl ? m : null;
+        }).Where(m => m != null);
         public static string GetLabel(SectionLayer __instance) => __instance.GetType().FullName;
     }
 }

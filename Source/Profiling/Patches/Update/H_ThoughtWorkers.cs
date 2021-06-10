@@ -10,13 +10,11 @@ using Verse;
 
 namespace Analyzer.Profiling
 {
-    [Entry("thought workers", Category.Update)]
+    [Entry("entry.update.thoughtworker", Category.Update)]
     public class H_ThoughtWorkers
     {
         public static bool Active = false;
 
-        [Setting("By Pawn")]
-        public static bool ByPawn = false;
 
         public static IEnumerable<MethodInfo> GetPatchMethods()
         {
@@ -28,13 +26,6 @@ namespace Analyzer.Profiling
                 method = AccessTools.Method(type, "CurrentSocialStateInternal");
                 if(method.DeclaringType == type) yield return method;
             }
-        }
-
-        public static string GetName(ThoughtWorker __instance, Pawn p)
-        {
-            return ByPawn
-                ? $"{p.Name.ToStringShort} - {__instance.GetType().Name}"
-                : __instance.GetType().Name;
         }
     }
 }
