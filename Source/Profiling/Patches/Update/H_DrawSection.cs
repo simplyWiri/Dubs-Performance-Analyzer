@@ -10,7 +10,8 @@ namespace Analyzer.Profiling
     {
         public static bool Active = false;
 
-        [Setting("By Def")] public static bool ByDef = false;
+        [Setting("By Def")] 
+        public static bool ByDef = false;
 
         public static void ProfilePatch()
         {

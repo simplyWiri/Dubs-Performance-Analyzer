@@ -15,6 +15,7 @@ namespace Analyzer.Profiling
     public static class ProfileController
     {
         public static Dictionary<string, Profiler> profiles = new Dictionary<string, Profiler>();
+        public static Profiler[] fastPathProfilers = new Profiler[128];
 
 #if DEBUG
         private static bool midUpdate = false;
@@ -23,6 +24,29 @@ namespace Analyzer.Profiling
         public static float updateFrequency => 1 / Settings.updatesPerSecond; // how many ms per update (capped at every 0.05ms)
 
         public static Dictionary<string, Profiler> Profiles => profiles;
+
+        public static IEnumerable<KeyValuePair<string, Profiler>> GetProfiles()
+        {
+            foreach (var pair in profiles)
+                yield return pair;
+
+            foreach (var pair in fastPathProfilers.Where(p => p != null).Select(p => new KeyValuePair<string, Profiler>(p.key, p)))
+                yield return pair;
+        }
+
+        public static void ClearProfiles()
+        {
+            profiles.Clear();
+            Array.Fill(fastPathProfilers, null);
+        }
+
+        public static Profiler GetProfiler(string key)
+        {
+            if (Profiles.TryGetValue(key, out var prof)) return prof;
+            
+            var p = fastPathProfilers.First(p => p != null && p.key == key);
+            return p;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Profiler Start(string key, Func<string> GetLabel = null, Type type = null, MethodBase meth = null)
@@ -43,6 +67,16 @@ namespace Analyzer.Profiling
         {
             if (Profiles.TryGetValue(key, out Profiler prof))
                 prof.Stop();
+        }
+
+        public static void RegisterFastPath(int key)
+        {
+            if (key > fastPathProfilers.Length)
+            {
+                Array.Resize(ref fastPathProfilers, fastPathProfilers.Length + 128);
+            }
+
+            fastPathProfilers[key] = null;
         }
 
         // Mostly here for book keeping, optimised out of a release build.

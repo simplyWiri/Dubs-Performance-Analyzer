@@ -62,7 +62,7 @@ namespace Analyzer.Profiling
         // Called every update period (tick / root update)
         internal static void UpdateCycle()
         {
-            foreach (var profile in ProfileController.Profiles)
+            foreach (var profile in ProfileController.GetProfiles())
                 profile.Value.RecordMeasurement();
 
             if (currentLogCount < MAX_LOG_COUNT)
@@ -73,7 +73,7 @@ namespace Analyzer.Profiling
         // Calculates stats for all active profilers (not only the currently selected one)
         internal static void FinishUpdateCycle()
         {
-            if (ProfileController.Profiles.Count == 0) return;
+            if (!ProfileController.GetProfiles().Any()) return;
 
             var comparer = SortBy switch
             {
@@ -88,7 +88,7 @@ namespace Analyzer.Profiling
                 _ => averageComparer // default to order by average
             };
 
-            Task.Factory.StartNew(() => ProfileCalculations(new Dictionary<string, Profiler>(ProfileController.Profiles), currentLogCount, comparer));
+            Task.Factory.StartNew(() => ProfileCalculations(new Dictionary<string, Profiler>(ProfileController.GetProfiles()), currentLogCount, comparer));
         }
 
         public static void PatchEntry(Entry entry)
@@ -201,7 +201,7 @@ namespace Analyzer.Profiling
 #endif
 
                 // clear all profiles
-                ProfileController.Profiles.Clear();
+                ProfileController.ClearProfiles();
 #if DEBUG 
                 ThreadSafeLogger.Warning("Cleared Profiles");
 #endif

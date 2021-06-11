@@ -11,7 +11,7 @@ namespace Analyzer.Profiling
     {
         public static bool Active = false;
 
-        public static IEnumerable<MethodInfo> GetPatchMethods()
+        public static IEnumerable<MethodPatchWrapper> GetPatchMethods()
         {
             foreach (var mode in Harmony.GetAllPatchedMethods().ToList())
             {
@@ -20,18 +20,6 @@ namespace Analyzer.Profiling
                 {
                     yield return fix.PatchMethod;
                 }  
-            }
-        }
-
-        public static void ProfilePatch()
-        {
-            try
-            {
-                MethodTransplanting.PatchMethods(typeof(H_HarmonyPatches));
-            }
-            catch(Exception e)
-            {
-                ThreadSafeLogger.ReportException(e, "Failed to patch HarmonyPatches");
             }
         }
     }

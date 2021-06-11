@@ -33,9 +33,5 @@ namespace Analyzer.Profiling
                 return __instance.GetType().Name;
             }
         }
-
-        //slop(typeof(PawnRecentMemory), nameof(PawnRecentMemory.RecentMemoryInterval));
-        //slop(typeof(ThoughtHandler), nameof(ThoughtHandler.ThoughtInterval));
-        //slop(typeof(PawnObserver), nameof(PawnObserver.ObserverInterval));
     }
 }

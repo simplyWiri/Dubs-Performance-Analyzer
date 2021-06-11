@@ -15,11 +15,11 @@ namespace Analyzer.Profiling
 
         public static bool Active = false;
 
-        public static IEnumerable<MethodInfo> GetPatchMethods() => typeof(SectionLayer).AllSubclasses().Select(sl =>
+        public static IEnumerable<MethodPatchWrapper> GetPatchMethods() => typeof(SectionLayer).AllSubclasses().Select(sl =>
         {
             var m = AccessTools.Method(sl, "Regenerate");
             return m.DeclaringType == sl ? m : null;
-        }).Where(m => m != null);
+        }).Where(m => m != null).Select(m => new MethodPatchWrapper(m));
         public static string GetLabel(SectionLayer __instance) => __instance.GetType().FullName;
     }
 }

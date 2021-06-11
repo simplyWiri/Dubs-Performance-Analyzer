@@ -67,8 +67,6 @@ namespace Analyzer.Profiling
 
         public static void ProfilePatch()
         {
-            MethodTransplanting.PatchMethods(typeof(H_InfoCard));
-
             Modbase.Harmony.Patch( AccessTools.Method(typeof(StatsReportUtility), nameof(StatsReportUtility.DrawStatsReport), new[] { typeof(Rect), typeof(Thing) }),
                 new HarmonyMethod(typeof(H_InfoCard), nameof(FUUUCK)));
         }

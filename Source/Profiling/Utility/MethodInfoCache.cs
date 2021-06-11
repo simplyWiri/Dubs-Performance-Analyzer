@@ -72,6 +72,8 @@ namespace Analyzer.Profiling
                 }
 
                 nameToKey.Add(key, index);
+
+                ProfileController.RegisterFastPath(index);
             }
 
             internalArrays[index >> 7][index & 0x7f] = method;

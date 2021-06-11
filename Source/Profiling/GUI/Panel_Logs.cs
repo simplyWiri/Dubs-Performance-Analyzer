@@ -334,7 +334,7 @@ namespace Analyzer.Profiling
                 return;
             }
 
-            var profile = ProfileController.Profiles[log.key];
+            var profile = ProfileController.GetProfiler(log.key);
 
             // Is this entry currently 'active'?
             if (GUIController.CurrentEntry.onSelect != null)
