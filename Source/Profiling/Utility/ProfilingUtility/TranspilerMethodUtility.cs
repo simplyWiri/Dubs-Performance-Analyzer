@@ -55,44 +55,44 @@ namespace Analyzer.Profiling
         [HarmonyPriority(Priority.Last)]
         private static IEnumerable<CodeInstruction> Transpiler(MethodBase __originalMethod, IEnumerable<CodeInstruction> instructions)
         {
-            var inst = PatchProcessor.GetOriginalInstructions(__originalMethod);
-            var modInstList = instructions.ToList();
+            //var inst = PatchProcessor.GetOriginalInstructions(__originalMethod);
+            //var modInstList = instructions.ToList();
 
-            var insts = new Myers<CodeInstruction>(inst.ToArray(), modInstList.ToArray(), methComparer);
-            insts.Compute();
+            //var insts = new Myers<CodeInstruction>(inst.ToArray(), modInstList.ToArray(), methComparer);
+            //insts.Compute();
 
-            var key = Utility.GetMethodKey(__originalMethod);
-            var index = MethodInfoCache.AddMethod(key, __originalMethod);
+            //var key = Utility.GetMethodKey(__originalMethod);
+            //var index = MethodInfoCache.AddMethod(key, __originalMethod);
 
-            foreach (var thing in insts.changeSet)
-            {
-                // We only want added methods
-                if (thing.change != ChangeType.Added) continue;
+            //foreach (var thing in insts.changeSet)
+            //{
+            //    // We only want added methods
+            //    if (thing.change != ChangeType.Added) continue;
 
-                if (!(thing.value.opcode == OpCodes.Call || thing.value.opcode == OpCodes.Callvirt) || !(thing.value.operand is MethodInfo meth)) continue;
+            //    if (!(thing.value.opcode == OpCodes.Call || thing.value.opcode == OpCodes.Callvirt) || !(thing.value.operand is MethodInfo meth)) continue;
 
-                // swap our instruction
-                var replaceInstruction = MethodTransplanting.ReplaceMethodInstruction(
-                    thing.value,
-                    key,
-                    typeof(H_HarmonyTranspilersInternalMethods),
-                    index);
+            //    // swap our instruction
+            //    var replaceInstruction = MethodTransplanting.ReplaceMethodInstruction(
+            //        thing.value,
+            //        key,
+            //        typeof(H_HarmonyTranspilersInternalMethods),
+            //        index);
 
-                // Find the place it was in our method, and replace the instruction (Optimisation Opportunity to improve this)
-                for (var i = 0; i < modInstList.Count; i++)
-                {
-                    var instruction = modInstList[i];
+            //    // Find the place it was in our method, and replace the instruction (Optimisation Opportunity to improve this)
+            //    for (var i = 0; i < modInstList.Count; i++)
+            //    {
+            //        var instruction = modInstList[i];
 
-                    if (!(thing.value.opcode == OpCodes.Call || thing.value.opcode == OpCodes.Callvirt)) continue;
-                    if (!(instruction.operand is MethodInfo info) || info.Name != meth.Name) continue;
+            //        if (!(thing.value.opcode == OpCodes.Call || thing.value.opcode == OpCodes.Callvirt)) continue;
+            //        if (!(instruction.operand is MethodInfo info) || info.Name != meth.Name) continue;
 
 
-                    if (instruction != replaceInstruction) modInstList[i] = replaceInstruction;
-                    break;
-                }
-            }
+            //        if (instruction != replaceInstruction) modInstList[i] = replaceInstruction;
+            //        break;
+            //    }
+            //}
 
-            return modInstList;
+            return instructions;
         }
     }
 }

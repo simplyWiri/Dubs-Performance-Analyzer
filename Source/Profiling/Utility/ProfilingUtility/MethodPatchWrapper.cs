@@ -14,19 +14,27 @@ namespace Analyzer.Profiling
             return new MethodPatchWrapper(method);
         }
 
-        public MethodPatchWrapper(MethodInfo method, MethodInfo customNamer = null, MethodInfo customLabeller = null)
+        // method - the target method you want to patch
+        // (opt) customNamer - a method which dictates the KEY of the profiler
+        // (opt) customLabeller - a method which dictates the LABEL of the profiler viewable in the GUI
+        // (opt) calledIn - a list of methods to replace calls to `target` with a profiler version
+        public MethodPatchWrapper(MethodInfo method, MethodInfo customKeyNamer = null, MethodInfo customLabeller = null, List<MethodInfo> calledIn = null)
         {
-            this.methodInfo = method;
-            this.customNamer = customNamer;
+            this.target = method;
+            this.customKeyNamer = customKeyNamer;
             this.customLabeller = customLabeller;
+            this.entries = new List<Type>();
         }
 
-        public void SetEntry(Type entry) => this.entry = entry;
+        public void SetEntry(Type entry) => this.entries.Add(entry);
+        public void SetUID(int uid) => this.uid = uid;
 
-        public MethodInfo methodInfo;
-        public MethodInfo customTyper;
-        public MethodInfo customNamer;
+        public MethodInfo target;
+        public int uid = 0;
+        public List<MethodInfo> calledIn = null;
+
+        public MethodInfo customKeyNamer;
         public MethodInfo customLabeller;
-        public Type entry;
+        public List<Type> entries;
     }
 }

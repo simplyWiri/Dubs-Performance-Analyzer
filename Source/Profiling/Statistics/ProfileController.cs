@@ -14,81 +14,49 @@ namespace Analyzer.Profiling
 {
     public static class ProfileController
     {
-        public static Dictionary<string, Profiler> profiles = new Dictionary<string, Profiler>();
-        public static Profiler[] fastPathProfilers = new Profiler[128];
-
-#if DEBUG
-        private static bool midUpdate = false;
-#endif
         private static float deltaTime = 0.0f;
         public static float updateFrequency => 1 / Settings.updatesPerSecond; // how many ms per update (capped at every 0.05ms)
 
-        public static Dictionary<string, Profiler> Profiles => profiles;
-
-        public static IEnumerable<KeyValuePair<string, Profiler>> GetProfiles()
+        public static IEnumerable<Profiler> GetProfiles()
         {
-            foreach (var pair in profiles)
-                yield return pair;
+            if (GUIController.CurrentEntry == null) yield break;
 
-            foreach (var pair in fastPathProfilers.Where(p => p != null).Select(p => new KeyValuePair<string, Profiler>(p.key, p)))
-                yield return pair;
+            foreach (var p in ProfilerRegistry.entryToLogs[GUIController.CurrentEntry.type].Select(index => ProfilerRegistry.profilers[index]).Where(p => p != null))
+            {
+                yield return p;
+            }
         }
 
         public static void ClearProfiles()
         {
-            profiles.Clear();
-            Array.Fill(fastPathProfilers, null);
+            ProfilerRegistry.Clear();
         }
 
         public static Profiler GetProfiler(string key)
         {
-            if (Profiles.TryGetValue(key, out var prof)) return prof;
-            
-            var p = fastPathProfilers.First(p => p != null && p.key == key);
-            return p;
+            return ProfilerRegistry.profilers[ProfilerRegistry.keyToWrapper[key].uid];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Profiler Start(string key, Func<string> GetLabel = null, Type type = null, MethodBase meth = null)
         {
-            if (!Analyzer.CurrentlyProfiling) return null;
+            //if (!Analyzer.CurrentlyProfiling) return null;
 
-            if (Profiles.TryGetValue(key, out var prof)) return prof.Start();
-            else
-            {
-                Profiles[key] = GetLabel != null ? new Profiler(key, GetLabel(), type, meth)
-                                                 : new Profiler(key, key, type, meth);
+            //if (Profiles.TryGetValue(key, out var prof)) return prof.Start();
+            //else
+            //{
+            //    Profiles[key] = GetLabel != null ? new Profiler(key, GetLabel(), type, meth)
+            //                                     : new Profiler(key, key, type, meth);
 
-                return Profiles[key].Start();
-            }
+            //    return Profiles[key].Start();
+            //}
+            return null;
         }
 
         public static void Stop(string key)
         {
-            if (Profiles.TryGetValue(key, out Profiler prof))
-                prof.Stop();
-        }
-
-        public static void RegisterFastPath(int key)
-        {
-            if (key > fastPathProfilers.Length)
-            {
-                Array.Resize(ref fastPathProfilers, fastPathProfilers.Length + 128);
-            }
-
-            fastPathProfilers[key] = null;
-        }
-
-        // Mostly here for book keeping, optimised out of a release build.
-        [Conditional("DEBUG")]
-        public static void BeginUpdate()
-        {
-#if DEBUG
-            if (Analyzer.CurrentlyPaused) return;
-
-            if (midUpdate) ThreadSafeLogger.Error("[Analyzer] Attempting to begin new update cycle when the previous update has not ended");
-            midUpdate = true;
-#endif
+            //if (Profiles.TryGetValue(key, out Profiler prof))
+            //    prof.Stop();
         }
 
         public static void EndUpdate()
@@ -103,9 +71,6 @@ namespace Analyzer.Profiling
                 Analyzer.FinishUpdateCycle(); // Process the information for all our profilers.
                 deltaTime -= updateFrequency;
             }
-#if DEBUG
-            midUpdate = false;
-#endif
         }
     }
 }

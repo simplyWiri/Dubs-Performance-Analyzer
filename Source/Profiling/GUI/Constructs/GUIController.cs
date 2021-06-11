@@ -124,6 +124,7 @@ namespace Analyzer.Profiling
             ThreadSafeLogger.Message($"Adding entry {name} into the category {category}");
 #endif
             var entry = Entry.Create(name, category, myType, true, true);
+            ProfilerRegistry.entryToLogs.TryAdd(entry.type, new List<int>());
 
             if (Tab(category).entries.ContainsKey(entry))
             {
@@ -142,6 +143,7 @@ namespace Analyzer.Profiling
             entry.SetActive(false);
 
             Tab(entry.category).entries.Remove(entry);
+            ProfilerRegistry.entryToLogs.Remove(entry.type, out _);
 
 #if DEBUG
             ThreadSafeLogger.Message($"Removing entry {name} from the category {entry.category.ToString()}");

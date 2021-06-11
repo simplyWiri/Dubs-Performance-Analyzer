@@ -50,7 +50,7 @@ namespace Analyzer.Profiling
         {
             Modbase.Harmony.Patch(AccessTools.Method(typeof(ThinkNode_Priority), nameof(ThinkNode_Priority.TryIssueJobPackage)), new HarmonyMethod(typeof(H_GetLord), nameof(Fringe)));
 
-            MethodTransplanting.UpdateMethods(typeof(H_GetLord), Utility.GetTypeMethods(typeof(Lord)).ToList());
+            //MethodTransplanting.UpdateMethods(typeof(H_GetLord), Utility.GetTypeMethods(typeof(Lord)).ToList());
         }
     }
 }

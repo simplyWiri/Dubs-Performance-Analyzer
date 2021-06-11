@@ -63,7 +63,7 @@ namespace Analyzer.Profiling
         internal static void UpdateCycle()
         {
             foreach (var profile in ProfileController.GetProfiles())
-                profile.Value.RecordMeasurement();
+                profile.RecordMeasurement();
 
             if (currentLogCount < MAX_LOG_COUNT)
                 currentLogCount++;
@@ -88,7 +88,7 @@ namespace Analyzer.Profiling
                 _ => averageComparer // default to order by average
             };
 
-            Task.Factory.StartNew(() => ProfileCalculations(new Dictionary<string, Profiler>(ProfileController.GetProfiles()), currentLogCount, comparer));
+            Task.Factory.StartNew(() => ProfileCalculations(new List<Profiler>(ProfileController.GetProfiles()), currentLogCount, comparer));
         }
 
         public static void PatchEntry(Entry entry)
@@ -108,7 +108,7 @@ namespace Analyzer.Profiling
                 catch (Exception e)
                 {
 #if DEBUG
-                    ThreadSafeLogger.ReportException($"[Analyzer] Failed to patch entry, failed with the message {e.Message}");
+                    ThreadSafeLogger.ReportException(e, $"[Analyzer] Failed to patch entry, failed with the message {e.Message}");
 #endif
 #if NDEBUG
                     if (Settings.verboseLogging)
@@ -126,13 +126,13 @@ namespace Analyzer.Profiling
         // n = count of profiles
         // m = number of logs
         // o(n*m + n*log(n)); - Could maybe thread this some more, to push higher update speeds
-        private static void ProfileCalculations(Dictionary<string, Profiler> Profiles, int currentLogCount, Comparer<ProfileLog> comparer)
+        private static void ProfileCalculations(List<Profiler> Profiles, int currentLogCount, Comparer<ProfileLog> comparer)
         {
             var newLogs = new List<ProfileLog>(Profiles.Count);
 
             double sumOfAverages = 0;
 
-            foreach (var value in Profiles.Values) // o(n)
+            foreach (var value in Profiles) // o(n)
             {
                 // o(m)
                 value.CollectStatistics(Mathf.Min(currentLogCount, MAX_LOG_COUNT - 1), out var average, out var max, out var total, out var calls, out var maxCalls);

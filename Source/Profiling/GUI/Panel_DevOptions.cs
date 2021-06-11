@@ -284,7 +284,7 @@ namespace Analyzer.Profiling
 						return;
 				}
 
-				MethodTransplanting.UpdateMethods(entry, methods);
+				//MethodTransplanting.UpdateMethods(entry, methods);
 				GUIController.Tab(cat).collapsed = false;
 
 				var entryName = (cat == Category.Tick) ? "Custom Tick" : "Custom Update";

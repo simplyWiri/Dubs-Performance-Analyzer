@@ -32,7 +32,7 @@ namespace Analyzer.Profiling
             MethodTransplanting.ClearCaches();
             TranspilerMethodUtility.ClearCaches();
 
-            MethodInfoCache.ClearCache();
+            ProfilerRegistry.Clear();
 
 #if DEBUG
             ThreadSafeLogger.Message("[Analyzer] Cleared all caches");
@@ -215,7 +215,7 @@ namespace Analyzer.Profiling
         private static void ReportException(Exception e, string message)
         {
 #if DEBUG
-            ThreadSafeLogger.ReportException($"[Analyzer] Patching error: {message}");
+            ThreadSafeLogger.ReportException(e, $"[Analyzer] Patching error: {message}");
 #endif
 #if NDEBUG
             if (!displayMessages) return;
@@ -503,7 +503,7 @@ namespace Analyzer.Profiling
                 }
             }
 
-            MethodTransplanting.UpdateMethods(GUIController.types[key], meths);
+            //MethodTransplanting.UpdateMethods(GUIController.types[key], meths);
         }
     }
 }

@@ -18,7 +18,7 @@ namespace Analyzer.Profiling
                 var patchInfo = Harmony.GetPatchInfo(mode);
                 foreach (var fix in patchInfo.Prefixes.Concat(patchInfo.Postfixes).Where(f => Utility.IsNotAnalyzerPatch(f.owner)))
                 {
-                    yield return fix.PatchMethod;
+                    yield return new MethodPatchWrapper(fix.PatchMethod);
                 }  
             }
         }

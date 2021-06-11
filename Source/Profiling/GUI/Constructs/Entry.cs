@@ -53,7 +53,7 @@ namespace Analyzer.Profiling
 
         public static Entry Create(string name, Category category, Type type, bool closeable, bool dynGen = false)
         {
-            Entry entry = entries.FirstOrDefault(
+            var entry = entries.FirstOrDefault(
                 x => x.name == name
                 && x.category == category
                 && x.type == type);

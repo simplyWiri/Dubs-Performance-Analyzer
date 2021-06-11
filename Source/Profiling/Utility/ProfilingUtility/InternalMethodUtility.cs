@@ -52,20 +52,20 @@ namespace Analyzer.Profiling
             {
                 var instructions = codeInstructions.ToList();
 
-                for (int i = 0; i < instructions.Count; i++)
-                {
-                    if (ValidCallInstruction(instructions, i, out var meth, out var key) == false) continue;
+                //for (int i = 0; i < instructions.Count; i++)
+                //{
+                //    if (ValidCallInstruction(instructions, i, out var meth, out var key) == false) continue;
                     
-                    var index = MethodInfoCache.AddMethod(key, meth);
+                //    var index = MethodInfoCache.AddMethod(key, meth);
 
-                    var inst = MethodTransplanting.ReplaceMethodInstruction(
-                        instructions[i],
-                        key,
-                        GUIController.types[__originalMethod.DeclaringType + ":" + __originalMethod.Name + "-int"],
-                        index);
+                //    var inst = MethodTransplanting.ReplaceMethodInstruction(
+                //        instructions[i],
+                //        key,
+                //        GUIController.types[__originalMethod.DeclaringType + ":" + __originalMethod.Name + "-int"],
+                //        index);
 
-                    instructions[i] = inst;
-                }
+                //    instructions[i] = inst;
+                //}
 
                 return instructions;
             }
