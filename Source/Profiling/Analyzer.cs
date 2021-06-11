@@ -37,15 +37,21 @@ namespace Analyzer.Profiling
         public static List<ProfileLog> Logs => logs;
         public static object LogicLock => logicSync;
 
-
         public static bool CurrentlyPaused { get => currentlyPaused; set => currentlyPaused = value; }
         public static bool CurrentlyProfiling => currentlyProfiling && !CurrentlyPaused;
 
         public static int GetCurrentLogCount => currentLogCount;
 
         // After this function has been called, the analyzer will be actively profiling / incuring lag :)
-        public static void BeginProfiling() => currentlyProfiling = true;
-        public static void EndProfiling() => currentlyProfiling = false;
+        public static void BeginProfiling()
+        {
+            currentlyProfiling = true;
+        }
+        public static void EndProfiling()
+        {
+            currentlyProfiling = false;
+            ProfilerRegistry.DisableProfilers();
+        }
 
         public static bool CurrentlyCleaningUp { get; set; } = false;
         public static SortBy SortBy { get; set; } = SortBy.Percent;

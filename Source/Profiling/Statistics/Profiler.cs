@@ -24,8 +24,8 @@ namespace Analyzer.Profiling
 
         public int hitCounter = 0;
 
-        public readonly double[] times;
-        public readonly int[] hits;
+        public double[] times;
+        public int[] hits;
         public uint currentIndex = 0; // ring buffer tracking
 
         public Profiler(string key, string label, Type type, MethodBase meth)
@@ -53,6 +53,14 @@ namespace Analyzer.Profiling
             var adj = stopwatch.Stop();
             hitCounter++;
         }
+
+        public void Clear()
+        {
+            stopwatch.Reset();
+            this.times = new double[RECORDS_HELD];
+            this.hits = new int[RECORDS_HELD];
+        }
+
 
         public void RecordMeasurement()
         {

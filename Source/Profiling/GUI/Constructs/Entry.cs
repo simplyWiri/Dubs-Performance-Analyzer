@@ -38,17 +38,13 @@ namespace Analyzer.Profiling
         public MethodInfo onClick;
         public MethodInfo checkBox;
 
-        public bool isActive = false;
         public bool isLoading = false;
         public bool isPatched = false;
         public bool isClosable = false;
 
         public void SetActive(bool value)
         {
-            if (type != null) // Active must be static here.
-                AccessTools.Field(type, "Active")?.SetValue(null, value);
-
-            isActive = value;
+            ProfilerRegistry.UpdateLogsForEntry(type, value);
         }
 
         public static Entry Create(string name, Category category, Type type, bool closeable, bool dynGen = false)
@@ -80,11 +76,6 @@ namespace Analyzer.Profiling
             if (dyGen) return;
             this.name = name?.Tr();
             this.tip = (name + ".tooltip")?.Tr();
-        }
-
-        public Profiler Start(string key, MethodBase info)
-        {
-            return ProfileController.Start(key, null, null, info);
         }
 
         public void PatchMethods()

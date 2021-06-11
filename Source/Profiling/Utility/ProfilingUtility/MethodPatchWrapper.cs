@@ -26,7 +26,7 @@ namespace Analyzer.Profiling
             this.entries = new List<Type>();
         }
 
-        public void SetEntry(Type entry) => this.entries.Add(entry);
+        public void AddEntry(Type entry) => this.entries.Add(entry);
         public void SetUID(int uid) => this.uid = uid;
 
         public MethodInfo target;

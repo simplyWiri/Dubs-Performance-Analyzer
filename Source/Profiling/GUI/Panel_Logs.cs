@@ -334,7 +334,7 @@ namespace Analyzer.Profiling
                 return;
             }
 
-            var profile = ProfileController.GetProfiler(log.key);
+            var profile = ProfilerRegistry.GetProfiler(log.key);
 
             // Is this entry currently 'active'?
             if (GUIController.CurrentEntry.onSelect != null)
@@ -459,22 +459,17 @@ namespace Analyzer.Profiling
             if (GUIController.CurrentEntry.type != typeof(H_HarmonyTranspilersInternalMethods))
                 yield return new FloatMenuOption("Profile the internal methods of", () => Utility.PatchInternalMethod(meth, GUIController.CurrentCategory));
 
-            // This part is WIP - it would require the ability to change the tab a method is active in on the fly
-            // which is possible (with a transpiler to the current transpiler) but it would likely end up being
-            // quite ugly, and I'd rather give a little more thought to the problem
-            //yield return new FloatMenuOption("Profile in Custom Tab", () =>
-            //{
-            //    if (GUIController.CurrentCategory == Category.Tick)
-            //    {
-            //        MethodTransplanting.UpdateMethod(typeof(CustomProfilersTick), meth);
-            //        GUIController.SwapToEntry("Custom Tick");
-            //    }
-            //    else
-            //    {
-            //        MethodTransplanting.UpdateMethod(typeof(CustomProfilersUpdate), meth);
-            //        GUIController.SwapToEntry("Custom Update");
-            //    }
-            //});
+            var entryName = GUIController.CurrentCategory == Category.Tick ? "Custom Tick" : "Custom Update";
+
+            yield return new FloatMenuOption($"Move to the {entryName} entry", () =>
+            {
+                var entry = GUIController.EntryByName(entryName);
+                var wrapper = ProfilerRegistry.keyToWrapper[profiler.key];
+
+                wrapper.AddEntry(entry.type);
+                ProfilerRegistry.SetInformationFor(wrapper.uid, false, profiler, wrapper);
+                GUIController.SwapToEntry(entryName);
+            });
         }
     }
 }

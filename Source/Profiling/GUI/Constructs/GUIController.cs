@@ -124,7 +124,7 @@ namespace Analyzer.Profiling
             ThreadSafeLogger.Message($"Adding entry {name} into the category {category}");
 #endif
             var entry = Entry.Create(name, category, myType, true, true);
-            ProfilerRegistry.entryToLogs.TryAdd(entry.type, new List<int>());
+            ProfilerRegistry.entryToLogs.TryAdd(entry.type, new HashSet<int>());
 
             if (Tab(category).entries.ContainsKey(entry))
             {

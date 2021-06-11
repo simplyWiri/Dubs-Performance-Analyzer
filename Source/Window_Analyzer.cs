@@ -146,7 +146,7 @@ namespace Analyzer
 
 					entry.type = entryType;
 
-					ProfilerRegistry.entryToLogs.TryAdd(entry.type, new List<int>());
+					ProfilerRegistry.entryToLogs.TryAdd(entry.type, new HashSet<int>());
 
 					// Find and append Entry to the correct Tab
 					if (!GUIController.Tab(entry.category).entries.ContainsKey(entry))

@@ -22,7 +22,7 @@ namespace Analyzer.Profiling
         internal static MethodBase[] methodBases = new MethodBase[ARRAY_EXPAND_SIZE];
         internal static Profiler[] profilers = new Profiler[ARRAY_EXPAND_SIZE];
         internal static ConcurrentDictionary<string, MethodPatchWrapper> keyToWrapper = new ConcurrentDictionary<string, MethodPatchWrapper>();
-        internal static ConcurrentDictionary<Type, List<int>> entryToLogs = new ConcurrentDictionary<Type, List<int>>();
+        internal static ConcurrentDictionary<Type, HashSet<int>> entryToLogs = new ConcurrentDictionary<Type, HashSet<int>>();
 
         internal static Dictionary<string, int> nameToProfiler = new Dictionary<string, int>();
 
@@ -41,11 +41,7 @@ namespace Analyzer.Profiling
                 ThreadSafeLogger.Message($"Failed to add {key}-{index} to profiler registry");
             }
 
-            foreach(var entry in wrapper.entries)
-                entryToLogs[entry].Add(index);
-
-            activePatches[index] = true;
-            methodBases[index] = wrapper.target;
+            SetInformationFor(index, true, null, wrapper);
         }
 
         public static void RegisterProfiler(string name, string baseMethodName, Profiler p)
@@ -54,11 +50,18 @@ namespace Analyzer.Profiling
             var baseWrapper = keyToWrapper[baseMethodName];
 
             nameToProfiler.Add(name, id);
-            foreach(var entry in baseWrapper.entries)
-                entryToLogs[entry].Add(id);
 
+            SetInformationFor(id, true, p, baseWrapper);
+        }
+
+        internal static void SetInformationFor(int id, bool active, Profiler p, MethodPatchWrapper wrapper)
+        {
+            activePatches[id] = active;
             profilers[id] = p;
-            methodBases[id] = baseWrapper.target;
+            methodBases[id] = wrapper.target;
+
+            foreach(var entry in wrapper.entries)
+                entryToLogs[entry].Add(id);
         }
 
         public static int RetrieveNextId()
@@ -106,7 +109,6 @@ namespace Analyzer.Profiling
             if (Settings.verboseLogging) 
                 ThreadSafeLogger.Message("Updating internal arrays for patch registry");
 
-
             UpdateArray(activePatches);
             UpdateArray(methodBases);
             UpdateArray(profilers);
@@ -128,15 +130,10 @@ namespace Analyzer.Profiling
 
         public static void Clear()
         {
-            lock (manipulationLock)
+            Parallel.For(0, profilers.Length, (p) =>
             {
-                currentIndex = 0;
-
-                activePatches = new bool[ARRAY_EXPAND_SIZE];
-                methodBases = new MethodBase[ARRAY_EXPAND_SIZE];
-                profilers = new Profiler[ARRAY_EXPAND_SIZE];
-                nameToProfiler.Clear();
-            }
+                profilers[p]?.Clear();
+            });
         }
 
         internal static void UpdateLogsForEntry(Type entry, bool value)
@@ -150,10 +147,7 @@ namespace Analyzer.Profiling
             }
         }
 
-        public static void DisableLogsForEntry(Type entry) => UpdateLogsForEntry(entry, false);
-        public static void EnableLogsForEntry(Type entry) => UpdateLogsForEntry(entry, true);
-
-        public static void DisableLogs()
+        public static void DisableProfilers()
         {
             lock (manipulationLock)
             {

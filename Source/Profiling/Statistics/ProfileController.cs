@@ -29,7 +29,7 @@ namespace Analyzer.Profiling
 
         public static void ClearProfiles()
         {
-            ProfilerRegistry.Clear();
+            //ProfilerRegistry.Clear();
         }
 
         public static Profiler GetProfiler(string key)

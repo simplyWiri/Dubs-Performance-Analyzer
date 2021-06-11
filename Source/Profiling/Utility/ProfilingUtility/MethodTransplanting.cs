@@ -60,7 +60,7 @@ namespace Analyzer.Profiling
         {
             foreach (var meth in meths)
             {
-                meth.SetEntry(type);
+                meth.AddEntry(type);
                 ProfileMethod(meth);
             }
         }
