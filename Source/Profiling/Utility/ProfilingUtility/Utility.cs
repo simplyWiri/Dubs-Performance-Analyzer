@@ -297,33 +297,28 @@ namespace Analyzer.Profiling
                 yield return method;
         }
 
-        public static IEnumerable<MethodInfo> SubClassImplementationsOf(Type baseType, Func<MethodInfo, bool> predicate)
-        {
-            var meths = new List<MethodInfo>();
-            foreach (var t in baseType.AllSubclasses())
-            {
-                meths.AddRange(GetTypeMethods(t).Where(predicate));
-            }
-
-            return meths;
-        }
-
-        public static IEnumerable<MethodInfo> SubClassNonAbstractImplementationsOf(Type baseType, Func<MethodInfo, bool> predicate)
-        {
-            var meths = new List<MethodInfo>();
-            foreach (var t in baseType.AllSubclassesNonAbstract())
-            {
-                meths.AddRange(GetTypeMethods(t).Where(predicate));
-            }
-
-            return meths;
-        }
-
         public static IEnumerable<MethodInfo> GetAssemblyMethods(Assembly assembly)
         {
             foreach (var type in assembly.GetTypes().Where(t => t.GetCustomAttribute<CompilerGeneratedAttribute>() == null))
                     foreach (var m in GetTypeMethods(type))
                         yield return m;
+        }
+
+        public static IEnumerable<Type> AllSubclassesAndBase(this Type t)
+        {
+            foreach (var type in t.AllSubclasses())
+                yield return type;
+
+            yield return t;
+        }
+
+        public static IEnumerable<MethodInfo> AllSubnBaseImplsOf(this Type t, Func<Type, MethodInfo> getMethod)
+        {
+            foreach (var type in t.AllSubclassesAndBase())
+            {
+                var method = getMethod(type);
+                if (method.DeclaringType == type && method.HasMethodBody()) yield return method;
+            }
         }
 
 

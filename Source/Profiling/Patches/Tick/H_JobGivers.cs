@@ -13,21 +13,12 @@ namespace Analyzer.Profiling
     [Entry("entry.tick.jobgiver", Category.Tick)]
     public static class H_JobGivers
     {
-        public static bool Active = false;
-
         [Setting("By Pawn")]
         public static bool ByPawn = false;
 
-        public static IEnumerable<MethodInfo> GetPatchMethods()
-        {
-            foreach (var t in typeof(ThinkNode_JobGiver).AllSubclasses())
-            {
-                var method = AccessTools.Method(t, "TryGiveJob");
-                if(t == method.DeclaringType) yield return method;
-            }
-                
-        }
-        public static string GetName(ThinkNode_JobGiver __instance, Pawn pawn)
+        public static IEnumerable<MethodPatchWrapper> GetPatchMethods() => typeof(ThinkNode_JobGiver).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "TryGiveJob")).Select(m => (MethodPatchWrapper)m);
+
+        public static string GetKeyName(ThinkNode_JobGiver __instance, Pawn pawn)
         {
             var tName = __instance.GetType().Name;
             if (ByPawn && pawn != null) return $"{pawn.KindLabel} - {tName}";

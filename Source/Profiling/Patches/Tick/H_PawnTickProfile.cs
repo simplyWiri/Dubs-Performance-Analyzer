@@ -12,9 +12,7 @@ namespace Analyzer.Profiling
     [Entry("entry.tick.pawn", Category.Tick)]
     internal static class H_PawnTickProfile
     {
-        public static bool Active = false;
-
-        public static IEnumerable<MethodInfo> GetPatchMethods()
+        public static IEnumerable<MethodPatchWrapper> GetPatchMethods()
         {
             yield return AccessTools.Method(typeof(Pawn_JobTracker), nameof(Pawn_JobTracker.JobTrackerTick));
             yield return AccessTools.Method(typeof(Pawn_AgeTracker), nameof(Pawn_AgeTracker.AgeTick));

@@ -14,12 +14,12 @@ namespace Analyzer.Profiling
     [Entry("entry.tick.mapcomponent", Category.Tick)]
     internal class H_MapComponentTick
     {
-        public static bool Active = false;
-
-        public static IEnumerable<MethodInfo> GetPatchMethods()
+        public static IEnumerable<MethodPatchWrapper> GetPatchMethods()
         {
-            foreach (var meth in Utility.SubClassNonAbstractImplementationsOf(typeof(MapComponent), t => t.Name == "MapComponentTick"))
-                yield return meth;
+            foreach (var method in typeof(MapComponent).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "MapComponentTick")))
+            {
+                yield return method;
+            }
 
             yield return AccessTools.Method(typeof(WildAnimalSpawner), nameof(WildAnimalSpawner.WildAnimalSpawnerTick));
             yield return AccessTools.Method(typeof(WildPlantSpawner), nameof(WildPlantSpawner.WildPlantSpawnerTick));

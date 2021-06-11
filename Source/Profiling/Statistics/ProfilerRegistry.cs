@@ -117,8 +117,6 @@ namespace Analyzer.Profiling
             UpdateArray(ref activePatches);
             UpdateArray(ref methodBases);
             UpdateArray(ref profilers);
-
-            ThreadSafeLogger.Message(activePatches.Length.ToString());
         }
 
         // Based on https://stackoverflow.com/a/30769838

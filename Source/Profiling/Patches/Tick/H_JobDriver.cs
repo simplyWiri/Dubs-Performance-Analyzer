@@ -13,21 +13,10 @@ namespace Analyzer.Profiling.Patches.Tick
     [Entry("entry.tick.jobdriver", Category.Tick)]
     class H_JobDriver
     {
-        public static bool Active = false;
-
         [Setting("By Pawn")]
         public static bool ByPawn = false;
 
-        public static IEnumerable<MethodPatchWrapper> GetPatchMethods()
-        {
-            foreach (var t in typeof(JobDriver).AllSubclasses())
-            {
-                var method = AccessTools.Method(t, "DriverTick");
-                if(t == method.DeclaringType) yield return method;
-            }
-
-            yield return AccessTools.Method(typeof(JobDriver), "DriverTick");
-        }
+        public static IEnumerable<MethodPatchWrapper> GetPatchMethods() => typeof(JobDriver).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "DriverTick")).Select(method => (MethodPatchWrapper) method);
 
         public static string GetKeyName(JobDriver __instance)
         {

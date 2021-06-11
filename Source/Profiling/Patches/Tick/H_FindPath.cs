@@ -12,12 +12,9 @@ namespace Analyzer.Profiling
     [Entry("entry.tick.pathfinder", Category.Tick)]
     internal class H_FindPath
     {
-        public static bool Active = false;
-
-        public static IEnumerable<MethodInfo> GetPatchMethods()
+        public static IEnumerable<MethodPatchWrapper> GetPatchMethods()
         {
-            yield return AccessTools.Method(typeof(Reachability), nameof(Reachability.CanReach),
-                new[] {typeof(IntVec3), typeof(LocalTargetInfo), typeof(PathEndMode), typeof(TraverseParms)});
+            yield return AccessTools.Method(typeof(Reachability), nameof(Reachability.CanReach), new[] {typeof(IntVec3), typeof(LocalTargetInfo), typeof(PathEndMode), typeof(TraverseParms)});
             yield return AccessTools.Method(typeof(PawnUtility), nameof(PawnUtility.ShouldCollideWithPawns));
             yield return AccessTools.Method(typeof(PathFinder), nameof(PathFinder.CalculateDestinationRect));
             yield return AccessTools.Method(typeof(PathFinder), nameof(PathFinder.GetAllowedArea));

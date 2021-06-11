@@ -12,17 +12,12 @@ namespace Analyzer.Profiling
     [Entry("entry.tick.needs", Category.Tick)]
     internal static class H_NeedsTrackerTick
     {
-        public static bool Active = false;
-
         [Setting("By pawn")]
         public static bool ByPawn = false;
 
-        public static IEnumerable<MethodInfo> GetPatchMethods()
-        {
-            return Utility.SubClassImplementationsOf(typeof(Need), (MethodInfo m) => m.Name == "NeedInterval");
-        }
+        public static IEnumerable<MethodPatchWrapper> GetPatchMethods() => typeof(Need).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "NeedInterval")).Select(m => (MethodPatchWrapper)m);
 
-        public static string GetName(Need __instance)
+        public static string GetKeyName(Need __instance)
         {
             if (ByPawn)
             {

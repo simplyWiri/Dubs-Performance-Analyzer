@@ -8,13 +8,13 @@ using Verse;
 
 namespace Analyzer.Profiling
 {
-    [Entry("entry.update.gamecomponent", Category.Update)]
-    public static class H_GameComponentUpdate
-    {
-        public static bool Active = false;
+    //[Entry("entry.update.gamecomponent", Category.Update)]
+    //public static class H_GameComponentUpdate
+    //{
+    //    public static bool Active = false;
 
-        public static IEnumerable<MethodPatchWrapper> GetPatchMethods() => Utility.SubClassNonAbstractImplementationsOf(typeof(GameComponent), t => t.Name == "GameComponentUpdate").Select(m => new MethodPatchWrapper(m));
-        public static string GetLabel(GameComponent __instance) => __instance.GetType().Name;
-    }
+    //    public static IEnumerable<MethodPatchWrapper> GetPatchMethods() => Utility.SubClassNonAbstractImplementationsOf(typeof(GameComponent), t => t.Name == "GameComponentUpdate").Select(m => new MethodPatchWrapper(m));
+    //    public static string GetLabel(GameComponent __instance) => __instance.GetType().Name;
+    //}
 
 }

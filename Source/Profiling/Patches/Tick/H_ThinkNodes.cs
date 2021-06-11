@@ -11,19 +11,6 @@ namespace Analyzer.Profiling
     [Entry("entry.tick.thinknodes", Category.Tick)]
     internal static class H_ThinkNodes
     {
-        public static bool Active = false;
-
-        public static IEnumerable<MethodInfo> GetPatchMethods()
-        {
-            foreach (var typ in typeof(ThinkNode).AllSubclasses())
-            {
-                var method =  AccessTools.Method(typ, nameof(ThinkNode.TryIssueJobPackage));
-
-                if (method != null && method.DeclaringType == typ)
-                {
-                    yield return method;
-                }
-            }
-        }
+        public static IEnumerable<MethodPatchWrapper> GetPatchMethods() => typeof(ThinkNode).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "TryIssueJobPackage")).Select(m => (MethodPatchWrapper)m);
     }
 }

@@ -271,7 +271,8 @@ namespace Analyzer.Profiling
 						methods = Utility.GetMethodsPatching(strinput);
 						break;
 					case CurrentInput.SubClasses:
-						methods = Utility.SubClassImplementationsOf(AccessTools.TypeByName(strinput), m => true);
+						// todo
+						methods = null;
 						break;
 					case CurrentInput.TypeHarmony:
 						methods = Utility.GetMethodsPatchingType(AccessTools.TypeByName(strinput));

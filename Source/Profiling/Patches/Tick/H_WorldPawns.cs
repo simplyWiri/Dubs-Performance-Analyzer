@@ -13,15 +13,10 @@ namespace Analyzer.Profiling
     [Entry("entry.tick.world", Category.Tick)]
     public static class H_WorldPawns
     {
-        public static bool Active = false;
-
-        public static IEnumerable<MethodInfo> GetPatchMethods()
+        public static IEnumerable<MethodPatchWrapper> GetPatchMethods()
         {
-            foreach (var type in typeof(WorldComponent).AllSubclasses())
-            {
-                var meth = AccessTools.Method(type, "WorldComponentTick");
-                if (meth.DeclaringType == type) yield return meth;
-            }
+            foreach (var method in typeof(WorldComponent).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "WorldComponentTick")))
+                yield return method;
 
             yield return AccessTools.Method(typeof(WorldPawns), nameof(WorldPawns.WorldPawnsTick));
             yield return AccessTools.Method(typeof(FactionManager), nameof(FactionManager.FactionManagerTick));
