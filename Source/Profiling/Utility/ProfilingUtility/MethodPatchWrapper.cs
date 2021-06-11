@@ -30,7 +30,7 @@ namespace Analyzer.Profiling
         public void SetUID(int uid) => this.uid = uid;
 
         public MethodInfo target;
-        public int uid = 0;
+        public int uid = -1;
         public List<MethodInfo> calledIn = null;
 
         public MethodInfo customKeyNamer;

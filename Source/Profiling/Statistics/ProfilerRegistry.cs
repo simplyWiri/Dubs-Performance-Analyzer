@@ -32,16 +32,19 @@ namespace Analyzer.Profiling
         // Thread safe
         public static void RegisterPatch(string key, MethodPatchWrapper wrapper)
         {
-            int index = RetrieveNextId();
-
-            wrapper.SetUID(index);
-
-            while (keyToWrapper.TryAdd(key, wrapper) == false)
+            if (wrapper.uid == -1)
             {
-                ThreadSafeLogger.Message($"Failed to add {key}-{index} to profiler registry");
+                int index = RetrieveNextId();
+
+                wrapper.SetUID(index);
+
+                while (keyToWrapper.TryAdd(key, wrapper) == false)
+                {
+                    ThreadSafeLogger.Message($"Failed to add {key}-{index} to profiler registry");
+                }
             }
 
-            SetInformationFor(index, true, null, wrapper);
+            SetInformationFor(wrapper.uid, true, null, wrapper);
         }
 
         public static void RegisterProfiler(string name, string baseMethodName, Profiler p)
@@ -132,7 +135,7 @@ namespace Analyzer.Profiling
         {
             Parallel.For(0, profilers.Length, (p) =>
             {
-                profilers[p]?.Clear();
+                profilers[p] = null;
             });
         }
 
