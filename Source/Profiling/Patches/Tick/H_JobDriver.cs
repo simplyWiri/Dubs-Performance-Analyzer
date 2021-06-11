@@ -18,7 +18,7 @@ namespace Analyzer.Profiling.Patches.Tick
         [Setting("By Pawn")]
         public static bool ByPawn = false;
 
-        public static IEnumerable<MethodInfo> GetPatchMethods()
+        public static IEnumerable<MethodPatchWrapper> GetPatchMethods()
         {
             foreach (var t in typeof(JobDriver).AllSubclasses())
             {
@@ -29,15 +29,12 @@ namespace Analyzer.Profiling.Patches.Tick
             yield return AccessTools.Method(typeof(JobDriver), "DriverTick");
         }
 
-        public static string GetName(JobDriver __instance)
+        public static string GetKeyName(JobDriver __instance)
         {
             var str = $"{__instance.GetType().Name}";
             return ByPawn
                 ? $"{__instance.pawn.KindLabel} - {str}"
                 : str;
         }
-
-
-        
     }
 }

@@ -207,7 +207,7 @@ namespace Analyzer.Profiling
 #endif
 
                 // clear all profiles
-                ProfileController.ClearProfiles();
+                ProfilerRegistry.FlushInformation();
 #if DEBUG 
                 ThreadSafeLogger.Warning("Cleared Profiles");
 #endif

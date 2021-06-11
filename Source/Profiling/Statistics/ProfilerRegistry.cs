@@ -49,6 +49,8 @@ namespace Analyzer.Profiling
 
         public static void RegisterProfiler(string name, string baseMethodName, Profiler p)
         {
+            if (nameToProfiler.ContainsKey(name)) return;
+
             var id = RetrieveNextId();
             var baseWrapper = keyToWrapper[baseMethodName];
 
@@ -112,13 +114,15 @@ namespace Analyzer.Profiling
             if (Settings.verboseLogging) 
                 ThreadSafeLogger.Message("Updating internal arrays for patch registry");
 
-            UpdateArray(activePatches);
-            UpdateArray(methodBases);
-            UpdateArray(profilers);
+            UpdateArray(ref activePatches);
+            UpdateArray(ref methodBases);
+            UpdateArray(ref profilers);
+
+            ThreadSafeLogger.Message(activePatches.Length.ToString());
         }
 
         // Based on https://stackoverflow.com/a/30769838
-        private static void UpdateArray<T>(T[] basis) 
+        private static void UpdateArray<T>(ref T[] basis) 
         {
             while (true)
             {
@@ -137,6 +141,22 @@ namespace Analyzer.Profiling
             {
                 profilers[p] = null;
             });
+        }
+
+        public static void FlushInformation()
+        {
+            lock (manipulationLock)
+            {
+                currentIndex = 0;
+
+                activePatches = new bool[ARRAY_EXPAND_SIZE];
+                methodBases = new MethodBase[ARRAY_EXPAND_SIZE];
+                profilers = new Profiler[ARRAY_EXPAND_SIZE];
+
+                keyToWrapper.Clear();
+                entryToLogs.Clear();
+                nameToProfiler.Clear();
+            }
         }
 
         internal static void UpdateLogsForEntry(Type entry, bool value)

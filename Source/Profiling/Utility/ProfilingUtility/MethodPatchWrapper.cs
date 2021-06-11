@@ -18,11 +18,11 @@ namespace Analyzer.Profiling
         // (opt) customNamer - a method which dictates the KEY of the profiler
         // (opt) customLabeller - a method which dictates the LABEL of the profiler viewable in the GUI
         // (opt) calledIn - a list of methods to replace calls to `target` with a profiler version
-        public MethodPatchWrapper(MethodInfo method, MethodInfo customKeyNamer = null, MethodInfo customLabeller = null, List<MethodInfo> calledIn = null)
+        public MethodPatchWrapper(MethodInfo method, MethodInfo getKeyName = null, MethodInfo getLabel = null, List<MethodInfo> calledIn = null)
         {
             this.target = method;
-            this.customKeyNamer = customKeyNamer;
-            this.customLabeller = customLabeller;
+            this.getKeyName = getKeyName;
+            this.getLabel = getLabel;
             this.entries = new List<Type>();
         }
 
@@ -33,8 +33,8 @@ namespace Analyzer.Profiling
         public int uid = -1;
         public List<MethodInfo> calledIn = null;
 
-        public MethodInfo customKeyNamer;
-        public MethodInfo customLabeller;
+        public MethodInfo getKeyName;
+        public MethodInfo getLabel;
         public List<Type> entries;
     }
 }

@@ -58,9 +58,15 @@ namespace Analyzer.Profiling
 
         public static void UpdateMethods(Type type, IEnumerable<MethodPatchWrapper> meths)
         {
+            var getKeyNameMeth = AccessTools.Method(type, "GetKeyName");
+            var getLabelMeth = AccessTools.Method(type, "GetLabel");
+
             foreach (var meth in meths)
             {
                 meth.AddEntry(type);
+                meth.getKeyName = getKeyNameMeth;
+                meth.getLabel = getLabelMeth;
+
                 ProfileMethod(meth);
             }
         }
@@ -225,14 +231,14 @@ namespace Analyzer.Profiling
         // 3. profLocal is not null, and it will continue execution as normal
         public static IEnumerable<CodeInstruction> InsertProfileRetrieval(MethodPatchWrapper wrapper, int methodKey, LocalBuilder keyLocal, LocalBuilder profLocal, Label beginlabel, Label noProfileLabel, Label noProfileFastPath, ILGenerator ilGen)
         {
-            if (wrapper.customKeyNamer != null)
+            if (wrapper.getKeyName != null)
             {
                 var indexVariable = ilGen.DeclareLocal(typeof(int));
 
-                foreach (var codeInst in GetLoadArgsForMethodParams(wrapper.target, wrapper.customKeyNamer.GetParameters()))
+                foreach (var codeInst in GetLoadArgsForMethodParams(wrapper.target, wrapper.getKeyName.GetParameters()))
                     yield return codeInst;
 
-                yield return new CodeInstruction(OpCodes.Call, wrapper.customKeyNamer);
+                yield return new CodeInstruction(OpCodes.Call, wrapper.getKeyName);
                 yield return new CodeInstruction(OpCodes.Stloc, keyLocal);
 
                 // if our key is null, start the method (opt out by name)
@@ -277,12 +283,12 @@ namespace Analyzer.Profiling
 
 
                 { // Custom Labelling
-                    if (wrapper.customLabeller != null)
+                    if (wrapper.getLabel != null)
                     {
-                        foreach (var codeInst in GetLoadArgsForMethodParams(wrapper.target, wrapper.customLabeller.GetParameters()))
+                        foreach (var codeInst in GetLoadArgsForMethodParams(wrapper.target, wrapper.getLabel.GetParameters()))
                             yield return codeInst;
 
-                        yield return new CodeInstruction(OpCodes.Call, wrapper.customLabeller);
+                        yield return new CodeInstruction(OpCodes.Call, wrapper.getLabel);
                     }
                     else
                     {
@@ -303,7 +309,7 @@ namespace Analyzer.Profiling
                 yield return new CodeInstruction(OpCodes.Stloc, profLocal);
             }
 
-            if(wrapper.customKeyNamer != null) // Add to the Profilers dictionary, so we cache creation.
+            if(wrapper.getKeyName != null) // Add to the Profilers dictionary, so we cache creation.
             { 
                 yield return new CodeInstruction(OpCodes.Ldloc, keyLocal);
                 yield return new CodeInstruction(OpCodes.Ldstr, key);

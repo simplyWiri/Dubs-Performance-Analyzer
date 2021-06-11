@@ -27,11 +27,6 @@ namespace Analyzer.Profiling
             }
         }
 
-        public static void ClearProfiles()
-        {
-            //ProfilerRegistry.Clear();
-        }
-
         public static Profiler GetProfiler(string key)
         {
             return ProfilerRegistry.profilers[ProfilerRegistry.keyToWrapper[key].uid];
