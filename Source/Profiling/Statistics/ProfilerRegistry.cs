@@ -21,7 +21,7 @@ namespace Analyzer.Profiling
         internal static bool[] activePatches = new bool[ARRAY_EXPAND_SIZE];
         internal static MethodBase[] methodBases = new MethodBase[ARRAY_EXPAND_SIZE];
         internal static Profiler[] profilers = new Profiler[ARRAY_EXPAND_SIZE];
-        internal static ConcurrentDictionary<string, MethodPatchWrapper> keyToWrapper = new ConcurrentDictionary<string, MethodPatchWrapper>();
+        internal static ConcurrentDictionary<string, PatchWrapper> keyToWrapper = new ConcurrentDictionary<string, PatchWrapper>();
         internal static ConcurrentDictionary<Type, HashSet<int>> entryToLogs = new ConcurrentDictionary<Type, HashSet<int>>();
 
         internal static Dictionary<string, int> nameToProfiler = new Dictionary<string, int>();
@@ -30,36 +30,55 @@ namespace Analyzer.Profiling
         private static readonly FieldInfo Array_Bool = AccessTools.Field(typeof(ProfilerRegistry), nameof(activePatches));
 
         // Thread safe
-        public static void RegisterPatch(string key, MethodPatchWrapper wrapper)
+        public static void RegisterPatch(string key, PatchWrapper wrapper)
         {
-            if (wrapper.uid == -1)
+            if (wrapper is MethodPatchWrapper mpw)
             {
-                int index = RetrieveNextId();
-
-                wrapper.SetUID(index);
-
-                while (keyToWrapper.TryAdd(key, wrapper) == false)
+                if (mpw.uid == -1)
                 {
-                    ThreadSafeLogger.Message($"Failed to add {key}-{index} to profiler registry");
+                    int index = RetrieveNextId();
+
+                    mpw.SetUID(index);
+                }
+                SetInformationFor(mpw.uid, true, null, wrapper);
+
+            } else if (wrapper is MultiMethodPatchWrapper mmpw)
+            {
+                for (int i = 0; i < mmpw.targets.Count; i++)
+                {
+                    var index = RetrieveNextId();
+                    mmpw.SetUID(i, index);
+
+                    SetInformationFor(index, true, null, wrapper);
+
+                    var subKey = Utility.GetSignature(mmpw.targets[i]);
+
+                    while (keyToWrapper.TryAdd(subKey, wrapper) == false)
+                    {
+                        ThreadSafeLogger.Message($"Failed to add {key} to profiler registry");
+                    }
                 }
             }
 
-            SetInformationFor(wrapper.uid, true, null, wrapper);
+            while (keyToWrapper.TryAdd(key, wrapper) == false)
+            {
+                ThreadSafeLogger.Message($"Failed to add {key} to profiler registry");
+            }
         }
 
         public static void RegisterProfiler(string name, string baseMethodName, Profiler p)
         {
-            if (nameToProfiler.ContainsKey(name)) return;
+            if (nameToProfiler.TryGetValue(name, out var cachedIdx) == false)
+            {
+                var id = RetrieveNextId();
+                nameToProfiler.Add(name, id);
+            }
 
-            var id = RetrieveNextId();
             var baseWrapper = keyToWrapper[baseMethodName];
-
-            nameToProfiler.Add(name, id);
-
-            SetInformationFor(id, true, p, baseWrapper);
+            SetInformationFor(cachedIdx, true, p, baseWrapper);
         }
 
-        internal static void SetInformationFor(int id, bool active, Profiler p, MethodPatchWrapper wrapper)
+        internal static void SetInformationFor(int id, bool active, Profiler p, PatchWrapper wrapper)
         {
             activePatches[id] = active;
             profilers[id] = p;
@@ -89,7 +108,7 @@ namespace Analyzer.Profiling
         public static Profiler GetProfiler(string key)
         {
             return keyToWrapper.TryGetValue(key, out var value) 
-                ? profilers[value.uid] 
+                ? profilers[value.GetUIDFor(key)] 
                 : nameToProfiler.TryGetValue(key, out var prof) 
                     ? profilers[prof] 
                     : null;

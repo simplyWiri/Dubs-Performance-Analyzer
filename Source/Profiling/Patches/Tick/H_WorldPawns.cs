@@ -13,7 +13,7 @@ namespace Analyzer.Profiling
     [Entry("entry.tick.world", Category.Tick)]
     public static class H_WorldPawns
     {
-        public static IEnumerable<MethodPatchWrapper> GetPatchMethods()
+        public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
             foreach (var method in typeof(WorldComponent).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "WorldComponentTick")))
                 yield return method;

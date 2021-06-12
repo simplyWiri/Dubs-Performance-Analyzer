@@ -16,7 +16,7 @@ namespace Analyzer.Profiling
         [Setting("By faction")]
         public static bool ByFaction = false;
 
-        public static IEnumerable<MethodPatchWrapper> GetPatchMethods()
+        public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
             yield return AccessTools.Method(typeof(PawnGenerator), nameof(PawnGenerator.GeneratePawn), new Type[] { typeof(PawnGenerationRequest) });
         }

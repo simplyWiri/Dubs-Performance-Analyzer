@@ -15,7 +15,7 @@ namespace Analyzer.Profiling
     {
         public static bool Active = false;
 
-        public static IEnumerable<MethodPatchWrapper> GetPatchMethods()
+        public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
 
             foreach (var type in typeof(MapComponent).AllSubclassesAndBase())

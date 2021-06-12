@@ -16,7 +16,7 @@ namespace Analyzer.Profiling
         [Setting("By Pawn")]
         public static bool ByPawn = false;
 
-        public static IEnumerable<MethodPatchWrapper> GetPatchMethods() => typeof(ThinkNode_JobGiver).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "TryGiveJob")).Select(m => (MethodPatchWrapper)m);
+        public static IEnumerable<PatchWrapper> GetPatchMethods() => typeof(ThinkNode_JobGiver).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "TryGiveJob")).Select(m => (PatchWrapper)m);
 
         public static string GetKeyName(ThinkNode_JobGiver __instance, Pawn pawn)
         {

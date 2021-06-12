@@ -15,7 +15,7 @@ namespace Analyzer.Profiling
         [Setting("By pawn")]
         public static bool ByPawn = false;
 
-        public static IEnumerable<MethodPatchWrapper> GetPatchMethods() => typeof(Need).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "NeedInterval")).Select(m => (MethodPatchWrapper)m);
+        public static IEnumerable<PatchWrapper> GetPatchMethods() => typeof(Need).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "NeedInterval")).Select(m => (PatchWrapper)m);
 
         public static string GetKeyName(Need __instance)
         {

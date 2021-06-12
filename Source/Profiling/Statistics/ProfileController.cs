@@ -19,17 +19,17 @@ namespace Analyzer.Profiling
 
         public static IEnumerable<Profiler> GetProfiles()
         {
-            if (GUIController.CurrentEntry == null) yield break;
+            if (GUIController.CurrentEntry == null) return null;
 
-            foreach (var p in ProfilerRegistry.entryToLogs[GUIController.CurrentEntry.type].Select(index => ProfilerRegistry.profilers[index]).Where(p => p != null))
-            {
-                yield return p;
-            }
+            return ProfilerRegistry.entryToLogs[GUIController.CurrentEntry.type]
+                .Select(index => ProfilerRegistry.profilers[index])
+                .Where(p => p != null)
+                .ToList();
         }
 
         public static Profiler GetProfiler(string key)
         {
-            return ProfilerRegistry.profilers[ProfilerRegistry.keyToWrapper[key].uid];
+            return ProfilerRegistry.profilers[ProfilerRegistry.keyToWrapper[key].GetUIDFor(key)];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -15,7 +15,7 @@ namespace Analyzer.Profiling
     {
         public static bool Active = false;
 
-        public static IEnumerable<MethodInfo> GetPatchMethods()
+        public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
             yield return AccessTools.Method(typeof(Dialog_InfoCard), nameof(Dialog_InfoCard.DoWindowContents));
             yield return AccessTools.Method(typeof(Dialog_InfoCard), nameof(Dialog_InfoCard.FillCard));

@@ -89,7 +89,7 @@ namespace Analyzer.Profiling
                 case SortBy.Average: return $" {log.average:0.000}ms ";
                 case SortBy.Max: return $" {log.max:0.000}ms ";
                 case SortBy.Calls: return $" {log.calls.ToString("N0", CultureInfo.InvariantCulture)} ";
-                case SortBy.AvPc: return $" {log.total/log.calls:0.000}ms ";
+                case SortBy.AvPc: return $" {(log.calls == 0 ? 0 : log.total/log.calls):0.000}ms ";
                 case SortBy.Percent: return $" {log.percent * 100:0.0}% ";
                 case SortBy.Name: return "    " + log.label;
                 case SortBy.Total: return $" {log.total:0.000}ms ";
@@ -326,7 +326,7 @@ namespace Analyzer.Profiling
 
             var visible = listing.GetRect(BOX_HEIGHT);
 
-            if (!visible.Overlaps(viewFrustum)) // if we don't overlap, continue, but continue to adjust for further logs.
+            if (visible.Overlaps(viewFrustum) == false) // if we don't overlap, continue, but continue to adjust for further logs.
             {
                 listing.GapLine(0f);
                 currentListHeight += (BOX_HEIGHT + 4);
@@ -467,7 +467,7 @@ namespace Analyzer.Profiling
                 var wrapper = ProfilerRegistry.keyToWrapper[profiler.key];
 
                 wrapper.AddEntry(entry.type);
-                ProfilerRegistry.SetInformationFor(wrapper.uid, false, profiler, wrapper);
+                ProfilerRegistry.SetInformationFor(wrapper.GetUIDFor(log.key), false, profiler, wrapper);
                 GUIController.SwapToEntry(entryName);
             });
         }

@@ -21,7 +21,7 @@ namespace Analyzer.Profiling
         public static bool Active = false;
 
 
-        public static IEnumerable<MethodPatchWrapper> GetPatchMethods()
+        public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
             var patches = Harmony.GetAllPatchedMethods().ToList();
 

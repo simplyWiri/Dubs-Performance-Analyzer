@@ -14,7 +14,7 @@ namespace Analyzer.Profiling
     {
         public static bool Active = false;
 
-        public static IEnumerable<MethodInfo> GetPatchMethods()
+        public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
             foreach (var m in Utility.GetTypeMethods(typeof(Verb_LaunchProjectile)))
                 yield return m;

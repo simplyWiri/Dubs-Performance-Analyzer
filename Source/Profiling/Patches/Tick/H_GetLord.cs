@@ -12,6 +12,6 @@ namespace Analyzer.Profiling
     [Entry("entry.tick.lord", Category.Tick)]
     internal class H_GetLord
     {
-        public static IEnumerable<MethodPatchWrapper> GetPatchMethods() => Utility.GetTypeMethods(typeof(Lord)).Select(m => (MethodPatchWrapper)m);
+        public static IEnumerable<PatchWrapper> GetPatchMethods() => Utility.GetTypeMethods(typeof(Lord)).Select(m => (PatchWrapper)m);
     }
 }

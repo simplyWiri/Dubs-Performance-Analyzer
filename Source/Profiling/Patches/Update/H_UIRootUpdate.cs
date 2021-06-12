@@ -13,7 +13,7 @@ namespace Analyzer.Profiling
     {
         public static bool Active = false;
 
-        public static IEnumerable<MethodInfo> GetPatchMethods()
+        public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
             yield return AccessTools.Method(typeof(ScreenshotTaker), nameof(ScreenshotTaker.Update));
             yield return AccessTools.Method(typeof(DragSliderManager), nameof(DragSliderManager.DragSlidersUpdate));

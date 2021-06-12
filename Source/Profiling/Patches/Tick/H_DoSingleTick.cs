@@ -10,7 +10,7 @@ namespace Analyzer.Profiling
     [Entry("entry.tick.single", Category.Tick)]
     internal class H_DoSingleTick
     {
-        public static IEnumerable<MethodPatchWrapper> GetPatchMethods()
+        public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
             yield return AccessTools.Method(typeof(TickList), nameof(TickList.Tick));
             yield return AccessTools.Method(typeof(GameComponentUtility), nameof(GameComponentUtility.GameComponentTick));

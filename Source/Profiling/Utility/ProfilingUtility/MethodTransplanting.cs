@@ -18,19 +18,15 @@ namespace Analyzer.Profiling
 {
     public static class MethodTransplanting
     {
-        public static ConcurrentDictionary<MethodBase, MethodPatchWrapper> patchedMethods = new ConcurrentDictionary<MethodBase, MethodPatchWrapper>();
+        public static ConcurrentDictionary<MethodBase, PatchWrapper> patchedMethods = new ConcurrentDictionary<MethodBase, PatchWrapper>();
 
         private static readonly HarmonyMethod generalTranspiler = new HarmonyMethod(typeof(MethodTransplanting), nameof(Transpiler));
-        //private static readonly HarmonyMethod occurencesInTranspiler = new HarmonyMethod(typeof(MethodTransplanting), nameof(Transpiler));
+        private static readonly HarmonyMethod occurencesInTranspiler = new HarmonyMethod(typeof(MethodTransplanting), nameof(ProfileOccurencesIn));
         
         // profiler registry
         private static readonly FieldInfo ProfilerRegistry_Profilers = AccessTools.Field(typeof(ProfilerRegistry), nameof(ProfilerRegistry.profilers));
         private static readonly FieldInfo ProfilerRegistry_CustomProfilers = AccessTools.Field(typeof(ProfilerRegistry), nameof(ProfilerRegistry.nameToProfiler));
         private static readonly MethodInfo ProfilerRegistry_RegisterProfiler = AccessTools.Method(typeof(ProfilerRegistry), nameof(ProfilerRegistry.RegisterProfiler));
-        
-
-        // profile controller
-        private static readonly FieldInfo ProfilerController_Profiles = AccessTools.Field(typeof(ProfileController), "profiles");
 
         // profiler
         private static readonly MethodInfo Profiler_Start = AccessTools.Method(typeof(Profiler), nameof(Profiler.Start));
@@ -39,7 +35,6 @@ namespace Analyzer.Profiling
 
         // dictionary
         private static readonly MethodInfo Dict_TryGetValue = AccessTools.Method(typeof(Dictionary<string, int>), "TryGetValue");
-        private static readonly MethodInfo Dict_Add = AccessTools.Method(typeof(Dictionary<string, Profiler>), "Add");
 
 
         public static void ClearCaches()
@@ -50,13 +45,13 @@ namespace Analyzer.Profiling
         public static void PatchMethods(Type type)
         {
             // get the methods
-            var meths = (IEnumerable<MethodPatchWrapper>)type.GetMethod("GetPatchMethods", BindingFlags.Public | BindingFlags.Static)?.Invoke(null, null);
+            var meths = (IEnumerable<PatchWrapper>)type.GetMethod("GetPatchMethods", BindingFlags.Public | BindingFlags.Static)?.Invoke(null, null);
 
             if (meths != null)
                 UpdateMethods(type, meths);
         }
 
-        public static void UpdateMethods(Type type, IEnumerable<MethodPatchWrapper> meths)
+        public static void UpdateMethods(Type type, IEnumerable<PatchWrapper> meths)
         {
             var getKeyNameMeth = AccessTools.Method(type, "GetKeyName");
             var getLabelMeth = AccessTools.Method(type, "GetLabel");
@@ -64,15 +59,19 @@ namespace Analyzer.Profiling
             foreach (var meth in meths)
             {
                 meth.AddEntry(type);
-                meth.getKeyName = getKeyNameMeth;
-                meth.getLabel = getLabelMeth;
+
+                if (meth is MethodPatchWrapper mpw)
+                {
+                    mpw.getKeyName = getKeyNameMeth;
+                    mpw.getLabel = getLabelMeth;
+                }
 
                 ProfileMethod(meth);
             }
         }
 
         // This will profile the method `method.target`, and will (if not null) apply the custom namer & labeller
-        public static void ProfileMethod(MethodPatchWrapper method)
+        public static void ProfileMethod(PatchWrapper method)
         { 
             if (patchedMethods.TryGetValue(method.target, out _))
             {
@@ -91,7 +90,8 @@ namespace Analyzer.Profiling
             {
                 try
                 {
-                    Modbase.Harmony.Patch(method.target, transpiler: generalTranspiler);
+                    var transpiler = method is MultiMethodPatchWrapper ? occurencesInTranspiler : generalTranspiler;
+                    Modbase.Harmony.Patch(method.target, transpiler: transpiler);
                 }
                 catch (Exception e)
                 {
@@ -105,6 +105,81 @@ namespace Analyzer.Profiling
             });
         }
 
+        public static IEnumerable<CodeInstruction> ProfileOccurencesIn(MethodBase __originalMethod, IEnumerable<CodeInstruction> insts, ILGenerator ilGen)
+        {
+            var wrapper = patchedMethods[__originalMethod] as MultiMethodPatchWrapper;
+            var baseKey = Utility.GetSignature(__originalMethod);
+            ProfilerRegistry.RegisterPatch(baseKey, wrapper);
+
+            var profLocal = ilGen.DeclareLocal(typeof(Profiler));
+            var keyLocal = ilGen.DeclareLocal(typeof(string));
+
+            var instructions = insts.ToList();
+
+            for (var i = 0; i < instructions.Count; i++)
+            {
+                var inst = instructions[i];
+                var mIdx = -1;
+
+                for (var j = 0; j < wrapper.targets.Count; j++)
+                {
+                    if (inst.Calls(wrapper.targets[j]) == false) continue;
+
+                    mIdx = j;
+                    break;
+                }
+
+                if (mIdx == -1)
+                {
+                    yield return inst;
+                    continue;
+                }
+
+                var skipLabel = ilGen.DefineLabel();
+                var noProfLabel = ilGen.DefineLabel();
+                var noProfFastPathLabel = ilGen.DefineLabel();
+
+                var uid = wrapper.uids[mIdx];
+                var key = Utility.GetSignature(wrapper.targets[mIdx]);
+                var getKeyName = wrapper.getKeyNames[mIdx];
+                var getLabel = wrapper.getLabels[mIdx];
+
+                foreach (var ins in InsertActiveCheck(uid, skipLabel))
+                    yield return ins;
+
+                foreach (var ins in InsertProfileRetrieval(wrapper.target, getKeyName, uid, keyLocal, profLocal, skipLabel, noProfLabel, noProfFastPathLabel, ilGen))
+                    yield return ins;
+
+                {
+                    yield return new CodeInstruction(OpCodes.Ldloc, profLocal);
+                    yield return new CodeInstruction(OpCodes.Call, Profiler_Start);
+                    yield return new CodeInstruction(OpCodes.Pop); // Profiler.Start returns itself so we pop it off the stack
+                    yield return new CodeInstruction(OpCodes.Br, skipLabel);
+                }
+
+                foreach (var ins in InsertProfilerCreation(wrapper.target, getKeyName, getLabel, key, uid, keyLocal, profLocal, noProfLabel, noProfFastPathLabel))
+                    yield return ins;
+
+                yield return new CodeInstruction(OpCodes.Call, Profiler_Start);
+                yield return new CodeInstruction(OpCodes.Pop); // profiler.Start returns itself
+
+                yield return inst.WithLabels(skipLabel);
+
+                var endLabel = ilGen.DefineLabel();
+
+                var nextInst = instructions[++i];
+
+                // localProf?.Stop();
+                yield return new CodeInstruction(OpCodes.Ldloc, profLocal).MoveLabelsFrom(nextInst);
+                yield return new CodeInstruction(OpCodes.Brfalse_S, endLabel);
+
+                yield return new CodeInstruction(OpCodes.Ldloc, profLocal);
+                yield return new CodeInstruction(OpCodes.Call, Profiler_Stop);
+
+                yield return nextInst.WithLabels(endLabel);
+
+            }
+        }
 
 
         // This transpiler basically replicates ProfileController.Start, but in IL, and inside the method it is patching, to reduce as much overhead as
@@ -118,19 +193,18 @@ namespace Analyzer.Profiling
             var noProfFastPathLabel = ilGen.DefineLabel();
             var noProfLabel = ilGen.DefineLabel();
 
-            var wrapper = patchedMethods[__originalMethod];
+            var wrapper = patchedMethods[__originalMethod] as MethodPatchWrapper;
 
             var key = Utility.GetSignature(__originalMethod as MethodInfo, true); // This translates our method into a human-legible key, I.e. Namespace.Type<Generic>:Method
             ProfilerRegistry.RegisterPatch(key, wrapper);
-            var methodKey = wrapper.uid;
 
             // Check if analyzer is active, if not branch to the start of the actual method
-            foreach (var inst in InsertActiveCheck(wrapper, beginLabel)) 
+            foreach (var inst in InsertActiveCheck(wrapper.uid, beginLabel)) 
                 yield return inst;
             
             
             // Retrieve our profiler key, we can retrieve this from a method, so its not the simplest process
-            foreach (var inst in InsertProfileRetrieval(wrapper, methodKey, keyLocal, profLocal, beginLabel, noProfLabel, noProfFastPathLabel, ilGen))
+            foreach (var inst in InsertProfileRetrieval(wrapper.target, wrapper.getKeyName, wrapper.uid, keyLocal, profLocal, beginLabel, noProfLabel, noProfFastPathLabel, ilGen))
                 yield return inst;
 
 
@@ -141,7 +215,7 @@ namespace Analyzer.Profiling
                 yield return new CodeInstruction(OpCodes.Br, beginLabel);
             }
 
-            foreach (var inst in InsertProfilerCreation(wrapper, key, methodKey, keyLocal, profLocal, noProfLabel, noProfFastPathLabel))
+            foreach (var inst in InsertProfilerCreation(wrapper.target, wrapper.getKeyName, wrapper.getLabel, key, wrapper.uid, keyLocal, profLocal, noProfLabel, noProfFastPathLabel))
                 yield return inst;
 
             yield return new CodeInstruction(OpCodes.Call, Profiler_Start);
@@ -207,7 +281,24 @@ namespace Analyzer.Profiling
                 }
                 else // Trying to intercept a param from the original method
                 {
-                    yield return new CodeInstruction(OpCodes.Ldarg_S, (originalMethod.IsStatic ? 0 : 1) + origParams.FirstIndexOf(p => p.Name == param.Name && p.ParameterType == param.ParameterType));
+                    var idx = 0;
+                    for (int i = 0; i < origParams.Length; i++)
+                    {
+                        var p = origParams[i];
+
+                        if (p.ParameterType == param.ParameterType)
+                        {
+                            if (p.Name == param.Name)
+                            {
+                                idx = i;
+                                break;
+                            }
+
+                            idx = i;
+                        }
+                    }
+
+                    yield return new CodeInstruction(OpCodes.Ldarg_S, (originalMethod.IsStatic ? 0 : 1) + idx);
                 }
             }
         }
@@ -216,9 +307,9 @@ namespace Analyzer.Profiling
         // checks entry.Active && Analyzer.CurrentlyProfiling && !Analyzer.CurrentlyPaused
         // if false, branches to `skipTo`
         // else, continues as normal
-        public static IEnumerable<CodeInstruction> InsertActiveCheck(MethodPatchWrapper wrapper, Label skipTo)
+        public static IEnumerable<CodeInstruction> InsertActiveCheck(int patchUID, Label skipTo)
         {
-            foreach (var inst in ProfilerRegistry.GetIL(wrapper.uid, true))
+            foreach (var inst in ProfilerRegistry.GetIL(patchUID, true))
                 yield return inst;
 
             yield return new CodeInstruction(OpCodes.Brfalse_S, skipTo);
@@ -229,16 +320,16 @@ namespace Analyzer.Profiling
         // the wrapper.customNamer is set or not
         // 2. customNamer returns null, it will be branching to `beginLabel`
         // 3. profLocal is not null, and it will continue execution as normal
-        public static IEnumerable<CodeInstruction> InsertProfileRetrieval(MethodPatchWrapper wrapper, int methodKey, LocalBuilder keyLocal, LocalBuilder profLocal, Label beginlabel, Label noProfileLabel, Label noProfileFastPath, ILGenerator ilGen)
+        public static IEnumerable<CodeInstruction> InsertProfileRetrieval(MethodInfo target, MethodInfo getKeyName, int methodKey, LocalBuilder keyLocal, LocalBuilder profLocal, Label beginlabel, Label noProfileLabel, Label noProfileFastPath, ILGenerator ilGen)
         {
-            if (wrapper.getKeyName != null)
+            if (getKeyName != null)
             {
                 var indexVariable = ilGen.DeclareLocal(typeof(int));
 
-                foreach (var codeInst in GetLoadArgsForMethodParams(wrapper.target, wrapper.getKeyName.GetParameters()))
+                foreach (var codeInst in GetLoadArgsForMethodParams(target, getKeyName.GetParameters()))
                     yield return codeInst;
 
-                yield return new CodeInstruction(OpCodes.Call, wrapper.getKeyName);
+                yield return new CodeInstruction(OpCodes.Call, getKeyName);
                 yield return new CodeInstruction(OpCodes.Stloc, keyLocal);
 
                 // if our key is null, start the method (opt out by name)
@@ -256,7 +347,9 @@ namespace Analyzer.Profiling
                     yield return new CodeInstruction(OpCodes.Ldsfld, ProfilerRegistry_Profilers);
                     yield return new CodeInstruction(OpCodes.Ldloc, indexVariable);
                     yield return new CodeInstruction(OpCodes.Ldelem, typeof(Profiler));
+                    yield return new CodeInstruction(OpCodes.Dup);
                     yield return new CodeInstruction(OpCodes.Stloc, profLocal);
+                    yield return new CodeInstruction(OpCodes.Brfalse, noProfileLabel);
                 }
             }
             else
@@ -273,22 +366,24 @@ namespace Analyzer.Profiling
         
         // Creates a profiler, and stores the value in the Profilers dictionary, or the fast path array.
         // there will be a profiler on the stack after the execution of this code.
-        public static IEnumerable<CodeInstruction> InsertProfilerCreation(MethodPatchWrapper wrapper, string key, int methodKey, LocalBuilder keyLocal, LocalBuilder profLocal, Label noProfLabel, Label noProfFastPathLabel)
+        public static IEnumerable<CodeInstruction> InsertProfilerCreation(MethodInfo target, MethodInfo getKeyName, MethodInfo getLabel, string key, int methodKey, LocalBuilder keyLocal, LocalBuilder profLocal, Label noProfLabel, Label noProfFastPathLabel)
         {
             { // if not, we need to make one
-                yield return new CodeInstruction(OpCodes.Ldstr, key).WithLabels(noProfFastPathLabel);
-                yield return new CodeInstruction(OpCodes.Stloc, keyLocal);
+                if (getKeyName == null)
+                {
+                    yield return new CodeInstruction(OpCodes.Ldstr, key).WithLabels(noProfFastPathLabel);
+                    yield return new CodeInstruction(OpCodes.Stloc, keyLocal);
+                }
 
                 yield return new CodeInstruction(OpCodes.Ldloc, keyLocal).WithLabels(noProfLabel);
 
-
                 { // Custom Labelling
-                    if (wrapper.getLabel != null)
+                    if (getLabel != null)
                     {
-                        foreach (var codeInst in GetLoadArgsForMethodParams(wrapper.target, wrapper.getLabel.GetParameters()))
+                        foreach (var codeInst in GetLoadArgsForMethodParams(target, getLabel.GetParameters()))
                             yield return codeInst;
 
-                        yield return new CodeInstruction(OpCodes.Call, wrapper.getLabel);
+                        yield return new CodeInstruction(OpCodes.Call, getLabel);
                     }
                     else
                     {
@@ -309,12 +404,12 @@ namespace Analyzer.Profiling
                 yield return new CodeInstruction(OpCodes.Stloc, profLocal);
             }
 
-            if(wrapper.getKeyName != null) // Add to the Profilers dictionary, so we cache creation.
+            if(getKeyName != null) // Add to the Profilers dictionary, so we cache creation.
             { 
                 yield return new CodeInstruction(OpCodes.Ldloc, keyLocal);
                 yield return new CodeInstruction(OpCodes.Ldstr, key);
                 yield return new CodeInstruction(OpCodes.Ldloc, profLocal);
-                yield return new CodeInstruction(OpCodes.Callvirt, ProfilerRegistry_RegisterProfiler);
+                yield return new CodeInstruction(OpCodes.Call, ProfilerRegistry_RegisterProfiler);
             }
             else
             {

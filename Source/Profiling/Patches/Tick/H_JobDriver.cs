@@ -16,7 +16,7 @@ namespace Analyzer.Profiling.Patches.Tick
         [Setting("By Pawn")]
         public static bool ByPawn = false;
 
-        public static IEnumerable<MethodPatchWrapper> GetPatchMethods() => typeof(JobDriver).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "DriverTick")).Select(method => (MethodPatchWrapper) method);
+        public static IEnumerable<PatchWrapper> GetPatchMethods() => typeof(JobDriver).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "DriverTick")).Select(method => (PatchWrapper) method);
 
         public static string GetKeyName(JobDriver __instance)
         {

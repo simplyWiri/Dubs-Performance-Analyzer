@@ -13,6 +13,6 @@ namespace Analyzer.Profiling.Patches.Tick
     [Entry("entry.tick.thingcomp", Category.Tick)]
     internal static class H_ThingComps
     {
-        public static IEnumerable<MethodPatchWrapper> GetPatchMethods() => typeof(ThingComp).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "CompTick")).Select(m => (MethodPatchWrapper)m);
+        public static IEnumerable<PatchWrapper> GetPatchMethods() => typeof(ThingComp).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "CompTick")).Select(m => (PatchWrapper)m);
     }
 }

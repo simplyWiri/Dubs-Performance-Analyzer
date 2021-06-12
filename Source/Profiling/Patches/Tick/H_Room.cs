@@ -10,7 +10,7 @@ namespace Analyzer.Profiling
     [Entry("entry.tick.room", Category.Tick)]
     internal class H_Room
     {
-        public static IEnumerable<MethodPatchWrapper> GetPatchMethods() => typeof(RoomStatWorker).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "GetScore")).Select(m => (MethodPatchWrapper)m);
+        public static IEnumerable<PatchWrapper> GetPatchMethods() => typeof(RoomStatWorker).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "GetScore")).Select(m => (PatchWrapper)m);
         public static string GetLabel(RoomStatWorker __instance) => $"{__instance.def.defName} - {__instance.def.workerClass.FullName}";
     }
 }

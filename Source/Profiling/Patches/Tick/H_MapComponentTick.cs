@@ -14,7 +14,7 @@ namespace Analyzer.Profiling
     [Entry("entry.tick.mapcomponent", Category.Tick)]
     internal class H_MapComponentTick
     {
-        public static IEnumerable<MethodPatchWrapper> GetPatchMethods()
+        public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
             foreach (var method in typeof(MapComponent).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "MapComponentTick")))
             {

@@ -83,6 +83,7 @@ namespace Analyzer.Profiling
         public static void ResetProfilers()
         {
             Analyzer.RefreshLogCount();
+            ProfilerRegistry.Clear();
             currentProfiler = null;
         }
 

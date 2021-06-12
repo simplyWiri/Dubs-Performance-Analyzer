@@ -17,7 +17,7 @@ namespace Analyzer.Profiling
     {
         public static bool Active = false;
 
-        public static IEnumerable<MethodPatchWrapper> GetPatchMethods()
+        public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
             yield return AccessTools.Method(typeof(ResolutionUtility), nameof(ResolutionUtility.Update));
             yield return AccessTools.Method(typeof(RealTime), nameof(RealTime.Update));
