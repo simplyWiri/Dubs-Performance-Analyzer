@@ -9,9 +9,7 @@ namespace Analyzer.Profiling
     [Entry("entry.gui.uiroot", Category.GUI)]
     internal class H_UIRootOnGUI
     {
-        public static bool Active = false;
-
-        public static IEnumerable<MethodInfo> GetPatchMethods()
+        public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
             yield return AccessTools.Method(typeof(UIRoot_Play), nameof(UIRoot_Play.UIRootOnGUI));
             yield return AccessTools.Method(typeof(UnityGUIBugsFixer), nameof(UnityGUIBugsFixer.OnGUI));

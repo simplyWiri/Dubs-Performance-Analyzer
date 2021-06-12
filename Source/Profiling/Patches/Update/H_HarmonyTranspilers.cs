@@ -18,9 +18,6 @@ namespace Analyzer.Profiling
     [Entry("entry.update.transpilermethods", Category.Update)]
     public static class H_HarmonyTranspiledMethods
     {
-        public static bool Active = false;
-
-
         public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
             var patches = Harmony.GetAllPatchedMethods().ToList();

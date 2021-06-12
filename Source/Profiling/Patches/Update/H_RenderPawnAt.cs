@@ -11,8 +11,6 @@ namespace Analyzer.Profiling
     [Entry("entry.update.pawnrenderer", Category.Update)]
     internal class H_RenderPawnAt
     {
-        public static bool Active = false;
-
         public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
             yield return AccessTools.Method(typeof(PawnRenderer), nameof(PawnRenderer.RenderPawnAt), new Type[] { typeof(Vector3), typeof(RotDrawMode), typeof(bool), typeof(bool)});

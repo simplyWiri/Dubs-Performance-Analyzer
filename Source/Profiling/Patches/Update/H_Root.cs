@@ -15,8 +15,6 @@ namespace Analyzer.Profiling
     [Entry("entry.update.root", Category.Update)]
     internal static class H_Root
     {
-        public static bool Active = false;
-
         public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
             yield return AccessTools.Method(typeof(ResolutionUtility), nameof(ResolutionUtility.Update));

@@ -11,8 +11,6 @@ namespace Analyzer.Profiling
     [Entry("entry.update.uiroot", Category.Update)]
     internal static class H_UIRootUpdate
     {
-        public static bool Active = false;
-
         public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
             yield return AccessTools.Method(typeof(ScreenshotTaker), nameof(ScreenshotTaker.Update));

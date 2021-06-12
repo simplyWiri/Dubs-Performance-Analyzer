@@ -9,8 +9,6 @@ namespace Analyzer.Profiling
     [Entry("entry.update.harmonypatches", Category.Update)]
     internal class H_HarmonyPatches
     {
-        public static bool Active = false;
-
         public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
             foreach (var mode in Harmony.GetAllPatchedMethods().ToList())

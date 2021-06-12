@@ -18,8 +18,6 @@ namespace Analyzer.Profiling
     [Entry("entry.update.harmonytranspilers", Category.Update)]
     public static class H_HarmonyTranspilersInternalMethods
     {
-        public static bool Active = false;
-
         public static void ProfilePatch()
         {
             var patches = Harmony.GetAllPatchedMethods().ToList();

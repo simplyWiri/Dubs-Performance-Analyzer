@@ -13,19 +13,14 @@ namespace Analyzer.Profiling
     [Entry("entry.update.thoughtworker", Category.Update)]
     public class H_ThoughtWorkers
     {
-        public static bool Active = false;
-
-
         public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
-            foreach (var type in typeof(ThoughtWorker).AllSubclasses())
-            {
-                var method = AccessTools.Method(type, "CurrentStateInternal");
-                if(method.DeclaringType == type) yield return method;
+            foreach (var method in typeof(ThoughtWorker).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "CurrentStateInternal")))
+                yield return method;
 
-                method = AccessTools.Method(type, "CurrentSocialStateInternal");
-                if(method.DeclaringType == type) yield return method;
-            }
+            foreach (var method in typeof(ThoughtWorker).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "CurrentSocialStateInternal")))
+                yield return method;
         }
+
     }
 }

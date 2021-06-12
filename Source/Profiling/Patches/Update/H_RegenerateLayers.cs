@@ -8,18 +8,9 @@ using Verse;
 
 namespace Analyzer.Profiling
 {
-    [StaticConstructorOnStartup]
+    [Entry("entry.update.sections", Category.Update)]
     internal class H_RegenerateLayers
     {
-        public static Entry p = Entry.Create("entry.update.sections", Category.Update, typeof(H_RegenerateLayers), false);
-
-        public static bool Active = false;
-
-        public static IEnumerable<PatchWrapper> GetPatchMethods() => typeof(SectionLayer).AllSubclasses().Select(sl =>
-        {
-            var m = AccessTools.Method(sl, "Regenerate");
-            return m.DeclaringType == sl ? m : null;
-        }).Where(m => m != null).Select(m => new MethodPatchWrapper(m));
-        public static string GetLabel(SectionLayer __instance) => __instance.GetType().FullName;
+        public static IEnumerable<PatchWrapper> GetPatchMethods() => typeof(SectionLayer).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "Regenerate")).Select(m => new MethodPatchWrapper(m));
     }
 }

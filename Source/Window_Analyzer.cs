@@ -87,8 +87,7 @@ namespace Analyzer
 				postfix: new HarmonyMethod(typeof(H_RootUpdate), nameof(H_RootUpdate.Postfix)));
 
 			Modbase.Harmony.Patch(AccessTools.Method(typeof(TickManager), nameof(TickManager.DoSingleTick)),
-
-			postfix: new HarmonyMethod(typeof(H_DoSingleTickUpdate), nameof(H_DoSingleTickUpdate.Postfix)));
+				postfix: new HarmonyMethod(typeof(H_DoSingleTickUpdate), nameof(H_DoSingleTickUpdate.Postfix)));
 
 			Modbase.isPatched = true;
 

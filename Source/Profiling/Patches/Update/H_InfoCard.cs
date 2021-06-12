@@ -13,8 +13,6 @@ namespace Analyzer.Profiling
     [Entry("entry.update.infocard", Category.Update)]
     internal class H_InfoCard
     {
-        public static bool Active = false;
-
         public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
             yield return AccessTools.Method(typeof(Dialog_InfoCard), nameof(Dialog_InfoCard.DoWindowContents));
@@ -33,42 +31,6 @@ namespace Analyzer.Profiling
 
             yield return AccessTools.Method(typeof(StatsReportUtility), nameof(StatsReportUtility.DrawStatsWorker));
             yield return AccessTools.Method(typeof(StatsReportUtility), nameof(StatsReportUtility.FinalizeCachedDrawEntries));
-        }
-
-        public static bool FUUUCK(Rect rect, Thing thing)
-        {
-            if (!Active) return true;
-
-            Profiler prof = null;
-            if (StatsReportUtility.cachedDrawEntries.NullOrEmpty<StatDrawEntry>())
-            {
-                prof = ProfileController.Start("SpecialDisplayStats");
-                StatsReportUtility.cachedDrawEntries.AddRange(thing.def.SpecialDisplayStats(StatRequest.For(thing)));
-                prof.Stop();
-
-                prof = ProfileController.Start("StatsToDraw");
-                StatsReportUtility.cachedDrawEntries.AddRange(StatsReportUtility.StatsToDraw(thing).Where(s => s.ShouldDisplay));
-                prof.Stop();
-
-                prof = ProfileController.Start("RemoveAll");
-                StatsReportUtility.cachedDrawEntries.RemoveAll((StatDrawEntry de) => de.stat != null && !de.stat.showNonAbstract);
-                prof.Stop();
-
-                prof = ProfileController.Start("FinalizeCachedDrawEntries");
-                StatsReportUtility.FinalizeCachedDrawEntries(StatsReportUtility.cachedDrawEntries);
-                prof.Stop();
-            }
-            prof = ProfileController.Start("DrawStatsWorker");
-            StatsReportUtility.DrawStatsWorker(rect, thing, null);
-            prof.Stop();
-
-            return false;
-        }
-
-        public static void ProfilePatch()
-        {
-            Modbase.Harmony.Patch( AccessTools.Method(typeof(StatsReportUtility), nameof(StatsReportUtility.DrawStatsReport), new[] { typeof(Rect), typeof(Thing) }),
-                new HarmonyMethod(typeof(H_InfoCard), nameof(FUUUCK)));
         }
     }
 }

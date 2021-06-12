@@ -13,16 +13,10 @@ namespace Analyzer.Profiling
     [Entry("entry.update.mapcomponent", Category.Update)]
     internal class H_MapComponentUpdate
     {
-        public static bool Active = false;
-
         public static IEnumerable<PatchWrapper> GetPatchMethods()
         {
-
-            foreach (var type in typeof(MapComponent).AllSubclassesAndBase())
-            {
-                var method = AccessTools.Method(type, "MapComponentUpdate");
-                if (method.DeclaringType == type) yield return method;
-            }
+            foreach (var method in typeof(MapComponent).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "MapComponentUpdate")))
+                yield return method;
 
             yield return AccessTools.Method(typeof(SkyManager), nameof(SkyManager.SkyManagerUpdate));
             yield return AccessTools.Method(typeof(PowerNetManager), nameof(PowerNetManager.UpdatePowerNetsAndConnections_First));
@@ -39,8 +33,5 @@ namespace Analyzer.Profiling
             yield return AccessTools.Method(typeof(DesignationManager), nameof(DesignationManager.DrawDesignations));
             yield return AccessTools.Method(typeof(OverlayDrawer), nameof(OverlayDrawer.DrawAllOverlays));
         }
-
-        public static string GetLabel(object __instance) => __instance.GetType().Name;
-
     }
 }

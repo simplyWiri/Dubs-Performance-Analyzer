@@ -11,6 +11,5 @@ namespace Analyzer.Profiling
     [Entry("entry.tick.custom", Category.Tick)]
     internal class CustomProfilersTick
     {
-        public static bool Active = false;
     }
 }

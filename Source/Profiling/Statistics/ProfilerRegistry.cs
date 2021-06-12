@@ -130,9 +130,6 @@ namespace Analyzer.Profiling
 
         private static void UpdateInternalArrays()
         {
-            if (Settings.verboseLogging) 
-                ThreadSafeLogger.Message("Updating internal arrays for patch registry");
-
             UpdateArray(ref activePatches);
             UpdateArray(ref methodBases);
             UpdateArray(ref profilers);
