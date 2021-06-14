@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using HarmonyLib;
 
 namespace Analyzer.Profiling
 {
@@ -66,12 +67,13 @@ namespace Analyzer.Profiling
 
         public void SetUID(int target, int uid) => this.uids[target] = uid;
 
+        // Ugly
         public override int GetUIDFor(string key)
         {
             for (var i = 0; i < targets.Count; i++)
             {
-                if (Utility.GetSignature(targets[i])
-                    .Equals(key)) return uids[i];
+                if (Utility.GetSignature(targets[i]).Equals(key)) 
+                    return uids[i];
             }
 
             return -1;
@@ -81,5 +83,32 @@ namespace Analyzer.Profiling
         public List<MethodInfo> targets;
         public List<MethodInfo> getKeyNames;
         public List<MethodInfo> getLabels;
+    }
+
+    public class TranspiledInMethodPatchWrapper : PatchWrapper
+    {
+        public TranspiledInMethodPatchWrapper(MethodInfo target, List<Change<CodeInstruction>> changeSet)
+            : base(target)
+        {
+            this.changeSet = changeSet;
+            this.uids = new List<int>(Enumerable.Repeat(-1, changeSet.Count));
+        }
+
+        public void SetUID(int target, int uid) => this.uids[target] = uid;
+
+        // Ugly
+        public override int GetUIDFor(string key)
+        {
+            var actString = key.Substring(key.LastIndexOf(" : ", StringComparison.Ordinal) + 3);
+            for (var i = 0; i < changeSet.Count; i++)
+            {
+                if (Utility.GetSignature(changeSet[i].value.operand as MethodInfo, false).Equals(actString))
+                    return uids[i];
+            }
+            return -1;
+        }
+
+        public List<Change<CodeInstruction>> changeSet = null;
+        public List<int> uids;
     }
 }

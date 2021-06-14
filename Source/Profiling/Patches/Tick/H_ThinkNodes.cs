@@ -12,5 +12,7 @@ namespace Analyzer.Profiling
     internal static class H_ThinkNodes
     {
         public static IEnumerable<PatchWrapper> GetPatchMethods() => typeof(ThinkNode).AllSubnBaseImplsOf((t) => AccessTools.Method(t, "TryIssueJobPackage")).Select(m => (PatchWrapper)m);
+
+        public static string GetKeyName(ThinkNode __instance) => __instance.GetType().FullName;
     }
 }

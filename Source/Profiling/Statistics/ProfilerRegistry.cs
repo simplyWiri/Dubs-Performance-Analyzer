@@ -98,6 +98,24 @@ namespace Analyzer.Profiling
                         ThreadSafeLogger.Message($"Failed to add {key} to profiler registry");
                     }
                 }
+            } else if (wrapper is TranspiledInMethodPatchWrapper timpw)
+            {
+                var tm = Utility.GetSignature(timpw.target, false);
+
+                for (int i = 0; i < timpw.changeSet.Count; i++)
+                {
+                    var index = RetrieveNextId();
+                    timpw.SetUID(i, index);
+
+                    SetInformationFor(index, true, null, wrapper);
+
+                    var subKey = $"{tm} : {Utility.GetSignature(timpw.changeSet[i].value.operand as MethodInfo, false)}";
+
+                    while (keyToWrapper.TryAdd(subKey, wrapper) == false)
+                    {
+                        ThreadSafeLogger.Message($"Failed to add {key} to profiler registry");
+                    }
+                }
             }
 
             while (keyToWrapper.TryAdd(key, wrapper) == false)

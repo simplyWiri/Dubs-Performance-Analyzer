@@ -23,16 +23,15 @@ namespace Analyzer.Profiling
             var patches = Harmony.GetAllPatchedMethods().ToList();
 
             var filteredTranspilers = patches
-                .Where(m => Harmony.GetPatchInfo(m).Transpilers.Any(p => Utility.IsNotAnalyzerPatch(p.owner) && !TranspilerMethodUtility.PatchedMeths.Contains(m)))
+                .Where(m => Harmony.GetPatchInfo(m).Transpilers.Any(p => Utility.IsNotAnalyzerPatch(p.owner)) && m is MethodInfo)
+                .Select(m => m as MethodInfo)
                 .ToList();
-
-            TranspilerMethodUtility.PatchedMeths.AddRange(filteredTranspilers);
 
             foreach (var meth in filteredTranspilers)
             {
                 try
                 {
-                    Modbase.Harmony.Patch(meth, transpiler: TranspilerMethodUtility.TranspilerProfiler);
+                    MethodTransplanting.ProfileInsertedMethods(meth);
                 }
                 catch (Exception e)
                 {

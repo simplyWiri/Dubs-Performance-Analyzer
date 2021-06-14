@@ -30,7 +30,6 @@ namespace Analyzer.Profiling
 
             InternalMethodUtility.ClearCaches();
             MethodTransplanting.ClearCaches();
-            TranspilerMethodUtility.ClearCaches();
 
             ProfilerRegistry.Clear();
 
@@ -65,7 +64,12 @@ namespace Analyzer.Profiling
 
             yield return name;
         }
-        
+
+        internal static bool IsCallInstruction(this CodeInstruction c)
+        {
+            return c.opcode == OpCodes.Call || c.opcode == OpCodes.Callvirt;
+        }
+
         internal static string GetSignature(MethodBase method, bool showParameters = true)
         {
             var firstParam = true;

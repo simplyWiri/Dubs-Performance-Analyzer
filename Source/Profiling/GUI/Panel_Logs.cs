@@ -101,10 +101,10 @@ namespace Analyzer.Profiling
 
         public bool Active(Type curEntry)
         {
-            var transpilersType = typeof(H_HarmonyTranspilersInternalMethods);
+            //var transpilersType = typeof(H_HarmonyTranspilersInternalMethods);
 
-            if ((sortBy == SortBy.Calls || sortBy == SortBy.AvPc || sortBy == SortBy.CallsPu) && transpilersType == curEntry)
-                return false;
+            //if ((sortBy == SortBy.Calls || sortBy == SortBy.AvPc || sortBy == SortBy.CallsPu) && transpilersType == curEntry)
+            //    return false;
 
             return active;
         }

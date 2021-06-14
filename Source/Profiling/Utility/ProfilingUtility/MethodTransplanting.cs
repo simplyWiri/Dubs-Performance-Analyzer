@@ -19,9 +19,14 @@ namespace Analyzer.Profiling
     public static class MethodTransplanting
     {
         public static ConcurrentDictionary<MethodBase, PatchWrapper> patchedMethods = new ConcurrentDictionary<MethodBase, PatchWrapper>();
+        private static readonly CodeInstMethEqual methComparer = new CodeInstMethEqual();
 
-        private static readonly HarmonyMethod generalTranspiler = new HarmonyMethod(typeof(MethodTransplanting), nameof(Transpiler));
-        private static readonly HarmonyMethod occurencesInTranspiler = new HarmonyMethod(typeof(MethodTransplanting), nameof(ProfileOccurencesIn));
+
+        private static readonly HarmonyMethod generalTranspiler = new HarmonyMethod(typeof(MethodTransplanting), nameof(ProfileMethodTranspiler));
+        private static readonly HarmonyMethod occurencesInTranspiler = new HarmonyMethod(typeof(MethodTransplanting), nameof(ProfileOccurencesInMethodTranspiler));
+        internal static readonly HarmonyMethod internalMethodsTranspiler = null;
+        internal static readonly HarmonyMethod transpiledInMethodsTranspiler = new HarmonyMethod(typeof(MethodTransplanting), nameof(MethodTransplanting.ProfileAddedMethodsTranspiler));
+
         
         // profiler registry
         private static readonly FieldInfo ProfilerRegistry_Profilers = AccessTools.Field(typeof(ProfilerRegistry), nameof(ProfilerRegistry.profilers));
@@ -36,6 +41,27 @@ namespace Analyzer.Profiling
         // dictionary
         private static readonly MethodInfo Dict_TryGetValue = AccessTools.Method(typeof(Dictionary<string, int>), "TryGetValue");
 
+        public class CodeInstMethEqual : EqualityComparer<CodeInstruction>
+        {
+            // Functions primarily to check if two function call CodeInstructions are the same. 
+            public override bool Equals(CodeInstruction a, CodeInstruction b)
+            {
+                if (a.opcode != b.opcode) return false;
+                
+                // because our previous check, both must be the same opcode.
+                if (a.opcode == OpCodes.Callvirt || a.opcode == OpCodes.Call)
+                {
+                    return (a.operand as MethodBase)?.Name == (b.operand as MethodBase)?.Name;
+                }
+
+                return a.operand == b.operand;
+            }
+
+            public override int GetHashCode(CodeInstruction obj)
+            {
+                return obj.GetHashCode();
+            }
+        }
 
         public static void ClearCaches()
         {
@@ -105,7 +131,32 @@ namespace Analyzer.Profiling
             });
         }
 
-        public static IEnumerable<CodeInstruction> ProfileOccurencesIn(MethodBase __originalMethod, IEnumerable<CodeInstruction> insts, ILGenerator ilGen)
+        public static void ProfileInsertedMethods(MethodInfo baseMethod)
+        {
+            var originalInstructions = PatchProcessor.GetOriginalInstructions(baseMethod);
+            var modInstList = PatchProcessor.GetCurrentInstructions(baseMethod);
+
+            var insts = new Myers<CodeInstruction>(originalInstructions.ToArray(), modInstList.ToArray(), methComparer);
+            insts.Compute();
+
+            var changes = insts.changeSet.Where(t => t.change == ChangeType.Added)
+                .Where(t => t.value.IsCallInstruction() && t.value.operand is MethodInfo)
+                .OrderBy(c => c.index)
+                .ToList();
+
+            // No added instructions, we aren't interested in continuing
+            if (changes.Count == 0) return;
+
+            var wrapper = new TranspiledInMethodPatchWrapper(baseMethod, changes);
+            wrapper.AddEntry(typeof(H_HarmonyTranspilersInternalMethods));
+
+            while (patchedMethods.TryAdd(baseMethod, wrapper) is false) { }
+            Modbase.Harmony.Patch(baseMethod, transpiler: transpiledInMethodsTranspiler);
+        }
+
+        // **************** Transpilers
+
+        internal static IEnumerable<CodeInstruction> ProfileOccurencesInMethodTranspiler(MethodBase __originalMethod, IEnumerable<CodeInstruction> insts, ILGenerator ilGen)
         {
             var wrapper = patchedMethods[__originalMethod] as MultiMethodPatchWrapper;
             var baseKey = Utility.GetSignature(__originalMethod);
@@ -119,72 +170,30 @@ namespace Analyzer.Profiling
             for (var i = 0; i < instructions.Count; i++)
             {
                 var inst = instructions[i];
-                var mIdx = -1;
-
-                for (var j = 0; j < wrapper.targets.Count; j++)
-                {
-                    if (inst.Calls(wrapper.targets[j]) == false) continue;
-
-                    mIdx = j;
-                    break;
-                }
-
-                if (mIdx == -1)
+                if (inst.IsCallInstruction() is false || CallsTarget(inst, wrapper.targets, out var index) is false)
                 {
                     yield return inst;
                     continue;
                 }
 
-                var skipLabel = ilGen.DefineLabel();
-                var noProfLabel = ilGen.DefineLabel();
-                var noProfFastPathLabel = ilGen.DefineLabel();
+                var uid = wrapper.uids[index];
+                var key = Utility.GetSignature(wrapper.targets[index]);
+                var getKeyName = wrapper.getKeyNames[index];
+                var getLabel = wrapper.getLabels[index];
 
-                var uid = wrapper.uids[mIdx];
-                var key = Utility.GetSignature(wrapper.targets[mIdx]);
-                var getKeyName = wrapper.getKeyNames[mIdx];
-                var getLabel = wrapper.getLabels[mIdx];
-
-                foreach (var ins in InsertActiveCheck(uid, skipLabel))
+                foreach (var ins in InsertProfilerStartupCode(instructions, i, ilGen, wrapper.target, keyLocal, profLocal, key, uid, getKeyName, getLabel))
                     yield return ins;
 
-                foreach (var ins in InsertProfileRetrieval(wrapper.target, getKeyName, uid, keyLocal, profLocal, skipLabel, noProfLabel, noProfFastPathLabel, ilGen))
+                yield return inst;
+
+                foreach (var ins in InsertProfilerEndCode(instructions, ++i, ilGen, profLocal))
                     yield return ins;
-
-                {
-                    yield return new CodeInstruction(OpCodes.Ldloc, profLocal);
-                    yield return new CodeInstruction(OpCodes.Call, Profiler_Start);
-                    yield return new CodeInstruction(OpCodes.Pop); // Profiler.Start returns itself so we pop it off the stack
-                    yield return new CodeInstruction(OpCodes.Br, skipLabel);
-                }
-
-                foreach (var ins in InsertProfilerCreation(wrapper.target, getKeyName, getLabel, key, uid, keyLocal, profLocal, noProfLabel, noProfFastPathLabel))
-                    yield return ins;
-
-                yield return new CodeInstruction(OpCodes.Call, Profiler_Start);
-                yield return new CodeInstruction(OpCodes.Pop); // profiler.Start returns itself
-
-                yield return inst.WithLabels(skipLabel);
-
-                var endLabel = ilGen.DefineLabel();
-
-                var nextInst = instructions[++i];
-
-                // localProf?.Stop();
-                yield return new CodeInstruction(OpCodes.Ldloc, profLocal).MoveLabelsFrom(nextInst);
-                yield return new CodeInstruction(OpCodes.Brfalse_S, endLabel);
-
-                yield return new CodeInstruction(OpCodes.Ldloc, profLocal);
-                yield return new CodeInstruction(OpCodes.Call, Profiler_Stop);
-
-                yield return nextInst.WithLabels(endLabel);
-
             }
         }
 
-
         // This transpiler basically replicates ProfileController.Start, but in IL, and inside the method it is patching, to reduce as much overhead as
         // possible, its quite simple, just long and hard to read.
-        public static IEnumerable<CodeInstruction> Transpiler(MethodBase __originalMethod, IEnumerable<CodeInstruction> insts, ILGenerator ilGen)
+        internal static IEnumerable<CodeInstruction> ProfileMethodTranspiler(MethodBase __originalMethod, IEnumerable<CodeInstruction> insts, ILGenerator ilGen)
         {
             var instructions = insts.ToList();
             var profLocal = ilGen.DeclareLocal(typeof(Profiler));
@@ -198,13 +207,97 @@ namespace Analyzer.Profiling
             var key = Utility.GetSignature(__originalMethod as MethodInfo, true); // This translates our method into a human-legible key, I.e. Namespace.Type<Generic>:Method
             ProfilerRegistry.RegisterPatch(key, wrapper);
 
+            foreach (var inst in InsertProfilerStartupCode(instructions, 0, ilGen, wrapper.target, keyLocal, profLocal, key, wrapper.uid, wrapper.getKeyName, wrapper.getLabel))
+                yield return inst;
+
+            // For each instruction which exits this function, append our finishing touches (I.e.)
+            // if(profiler != null)
+            // {
+            //      profiler.Stop();
+            // }
+            // return; // any labels here are moved to the start of the `if`
+            for(int i = 0; i < instructions.Count; i++)
+            {
+                var inst = instructions[i];
+                if (inst.opcode == OpCodes.Ret)
+                {
+                    foreach (var ins in InsertProfilerEndCode(instructions, i, ilGen, profLocal))
+                        yield return ins;
+                }
+                else
+                {
+                    yield return inst;
+                }
+            }
+        }
+
+        internal static IEnumerable<CodeInstruction> ProfileAddedMethodsTranspiler(MethodBase __originalMethod, IEnumerable<CodeInstruction> instructions, ILGenerator ilGen)
+        {
+            var origMethod = Utility.GetSignature(__originalMethod, false);
+            var wrapper = patchedMethods[__originalMethod] as TranspiledInMethodPatchWrapper;
+            var insts = instructions.ToList();
+
+            var profLocal = ilGen.DeclareLocal(typeof(Profiler));
+            var keyLocal = ilGen.DeclareLocal(typeof(string));
+
+            ProfilerRegistry.RegisterPatch(origMethod, wrapper);
+
+            for (int i = 0, changeSetIdx = 0; i < insts.Count; i++)
+            {
+                if (wrapper.changeSet[changeSetIdx].index != i)
+                {
+                    yield return insts[i];
+                    continue;
+                }
+                else
+                {
+                    var change = wrapper.changeSet[changeSetIdx];
+                    var target = change.value.operand as MethodInfo;
+
+                    var key = $"{origMethod} : {Utility.GetSignature(change.value.operand as MethodInfo, false)}";
+
+                    foreach (var inst in InsertProfilerStartupCode(insts, change.index, ilGen, target, keyLocal, profLocal, key, wrapper.GetUIDFor(key), null, null))
+                        yield return inst;
+
+                    yield return insts[i];
+
+                    foreach (var inst in InsertProfilerEndCode(insts, i + 1, ilGen, profLocal))
+                        yield return inst;
+
+                    i++;
+                    changeSetIdx++;
+                }
+                
+                if (changeSetIdx < wrapper.changeSet.Count) continue;
+
+                // If we have dealt with all the added instructions, can just return the rest of the method as normal
+                for (i++; i < insts.Count; i++)
+                    yield return insts[i];
+
+                break;
+            }
+        }
+
+
+        // **************** Transpiler Utility
+
+        public static IEnumerable<CodeInstruction> InsertProfilerStartupCode(
+            List<CodeInstruction> instructions, int index, ILGenerator ilGen, MethodInfo target, LocalBuilder keyLocal, LocalBuilder profLocal,
+            string key, int uid, MethodInfo getKeyName, MethodInfo getLabel)
+        {
+            var beginLabel = ilGen.DefineLabel();
+            var noProfFastPathLabel = ilGen.DefineLabel();
+            var noProfLabel = ilGen.DefineLabel();
+
             // Check if analyzer is active, if not branch to the start of the actual method
-            foreach (var inst in InsertActiveCheck(wrapper.uid, beginLabel)) 
+            var startupCode = InsertActiveCheck(uid, beginLabel).ToList();
+            startupCode[0].MoveLabelsFrom(instructions[index]);
+
+            foreach (var inst in startupCode) 
                 yield return inst;
             
-            
             // Retrieve our profiler key, we can retrieve this from a method, so its not the simplest process
-            foreach (var inst in InsertProfileRetrieval(wrapper.target, wrapper.getKeyName, wrapper.uid, keyLocal, profLocal, beginLabel, noProfLabel, noProfFastPathLabel, ilGen))
+            foreach (var inst in InsertProfileRetrieval(target, getKeyName, uid, keyLocal, profLocal, beginLabel, noProfLabel, noProfFastPathLabel, ilGen))
                 yield return inst;
 
 
@@ -215,42 +308,30 @@ namespace Analyzer.Profiling
                 yield return new CodeInstruction(OpCodes.Br, beginLabel);
             }
 
-            foreach (var inst in InsertProfilerCreation(wrapper.target, wrapper.getKeyName, wrapper.getLabel, key, wrapper.uid, keyLocal, profLocal, noProfLabel, noProfFastPathLabel))
+            foreach (var inst in InsertProfilerCreation(target, getKeyName, getLabel, key, uid, keyLocal, profLocal, noProfLabel, noProfFastPathLabel))
                 yield return inst;
 
             yield return new CodeInstruction(OpCodes.Call, Profiler_Start);
             yield return new CodeInstruction(OpCodes.Pop); // profiler.Start returns itself
 
-            instructions.ElementAt(0).WithLabels(beginLabel);
-
-            // For each instruction which exits this function, append our finishing touches (I.e.)
-            // if(profiler != null)
-            // {
-            //      profiler.Stop();
-            // }
-            // return; // any labels here are moved to the start of the `if`
-            foreach (var inst in instructions)
-            {
-                if (inst.opcode == OpCodes.Ret)
-                {
-                    var endLabel = ilGen.DefineLabel();
-
-                    // localProf?.Stop();
-                    yield return new CodeInstruction(OpCodes.Ldloc, profLocal).MoveLabelsFrom(inst);
-                    yield return new CodeInstruction(OpCodes.Brfalse_S, endLabel);
-
-                    yield return new CodeInstruction(OpCodes.Ldloc, profLocal);
-                    yield return new CodeInstruction(OpCodes.Call, Profiler_Stop);
-
-                    yield return inst.WithLabels(endLabel);
-                }
-                else
-                {
-                    yield return inst;
-                }
-            }
+            instructions.ElementAt(index).WithLabels(beginLabel);
         }
 
+        // profiler?.Stop();
+        public static IEnumerable<CodeInstruction> InsertProfilerEndCode(List<CodeInstruction> instructions, int index, ILGenerator ilGen, LocalBuilder profLocal)
+        {
+            var endLabel = ilGen.DefineLabel();
+            var nextInst = instructions[index];
+
+            // localProf?.Stop();
+            yield return new CodeInstruction(OpCodes.Ldloc, profLocal).MoveLabelsFrom(nextInst);
+            yield return new CodeInstruction(OpCodes.Brfalse_S, endLabel);
+
+            yield return new CodeInstruction(OpCodes.Ldloc, profLocal);
+            yield return new CodeInstruction(OpCodes.Call, Profiler_Stop);
+
+            yield return nextInst.WithLabels(endLabel);
+        }
         // Emulates Harmonys '__instance' & '___fieldName' & parameter sniping.
         private static IEnumerable<CodeInstruction> GetLoadArgsForMethodParams(MethodBase originalMethod, ParameterInfo[] methodparams)
         {
@@ -303,10 +384,20 @@ namespace Analyzer.Profiling
             }
         }
 
+        private static bool CallsTarget(CodeInstruction instruction, List<MethodInfo> targets, out int index)
+        {
+            index = -1;
+            for (var j = 0; j < targets.Count; j++)
+            {
+                if (instruction.Calls(targets[j]) == false) continue;
 
-        // checks entry.Active && Analyzer.CurrentlyProfiling && !Analyzer.CurrentlyPaused
-        // if false, branches to `skipTo`
-        // else, continues as normal
+                index = j;
+                return true;
+            }
+
+            return false;
+        }
+
         public static IEnumerable<CodeInstruction> InsertActiveCheck(int patchUID, Label skipTo)
         {
             foreach (var inst in ProfilerRegistry.GetIL(patchUID, true))
@@ -419,6 +510,7 @@ namespace Analyzer.Profiling
                 yield return new CodeInstruction(OpCodes.Stelem, typeof(Profiler));
             }
         }
+
 
 
         // Utility for internal && transpiler profiling.
