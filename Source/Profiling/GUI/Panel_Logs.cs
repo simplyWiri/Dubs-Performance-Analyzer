@@ -464,7 +464,7 @@ namespace Analyzer.Profiling
                 var wrapper = ProfilerRegistry.WrapperFromKey(profiler.key);
 
                 wrapper.AddEntry(entry.type);
-                ProfilerRegistry.SetInformationFor(wrapper.GetUIDFor(log.key), false, profiler, wrapper);
+                ProfilerRegistry.SetInformationFor(wrapper.GetUIDFor(log.key), false, profiler, wrapper.target, wrapper);
                 GUIController.SwapToEntry(entryName);
             });
         }

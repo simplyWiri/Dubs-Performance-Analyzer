@@ -105,10 +105,11 @@ namespace Analyzer.Profiling
                 if (Utility.GetSignature(changeSet[i].value.operand as MethodInfo, false).Equals(actString))
                     return uids[i];
             }
-            return -1;
+            return baseuid;
         }
 
         public List<Change<CodeInstruction>> changeSet = null;
         public List<int> uids;
+        public int baseuid;
     }
 }

@@ -80,7 +80,7 @@ namespace Analyzer.Profiling
 
                     mpw.SetUID(index);
                 }
-                SetInformationFor(mpw.uid, true, null, wrapper);
+                SetInformationFor(mpw.uid, true, null, wrapper.target, wrapper);
 
             } else if (wrapper is MultiMethodPatchWrapper mmpw)
             {
@@ -89,39 +89,32 @@ namespace Analyzer.Profiling
                     var index = RetrieveNextId();
                     mmpw.SetUID(i, index);
 
-                    SetInformationFor(index, true, null, wrapper);
+                    SetInformationFor(index, true, null, mmpw.targets[i], wrapper);
 
                     var subKey = Utility.GetSignature(mmpw.targets[i]);
 
-                    while (keyToWrapper.TryAdd(subKey, wrapper) == false)
-                    {
-                        ThreadSafeLogger.Message($"Failed to add {key} to profiler registry");
-                    }
+                    keyToWrapper.TryAdd(subKey, wrapper);
                 }
             } else if (wrapper is TranspiledInMethodPatchWrapper timpw)
             {
-                var tm = Utility.GetSignature(timpw.target, false);
+                var bIdx = RetrieveNextId();
+                timpw.baseuid = bIdx;
+                SetInformationFor(bIdx, true, null, wrapper.target, wrapper);
 
                 for (int i = 0; i < timpw.changeSet.Count; i++)
                 {
                     var index = RetrieveNextId();
                     timpw.SetUID(i, index);
 
-                    SetInformationFor(index, true, null, wrapper);
+                    SetInformationFor(index, true, null, timpw.changeSet[i].value.operand as MethodInfo, wrapper);
 
-                    var subKey = $"{tm} : {Utility.GetSignature(timpw.changeSet[i].value.operand as MethodInfo, false)}";
+                    var subKey = $"{key} : {Utility.GetSignature(timpw.changeSet[i].value.operand as MethodInfo, false)}";
 
-                    while (keyToWrapper.TryAdd(subKey, wrapper) == false)
-                    {
-                        ThreadSafeLogger.Message($"Failed to add {key} to profiler registry");
-                    }
+                    keyToWrapper.TryAdd(subKey, wrapper);
                 }
             }
 
-            while (keyToWrapper.TryAdd(key, wrapper) == false)
-            {
-                ThreadSafeLogger.Message($"Failed to add {key} to profiler registry");
-            }
+            keyToWrapper.TryAdd(key, wrapper);
         }
 
         public static void RegisterProfiler(string name, string baseMethodName, Profiler p)
@@ -133,14 +126,14 @@ namespace Analyzer.Profiling
             }
 
             var baseWrapper = keyToWrapper[baseMethodName];
-            SetInformationFor(cachedIdx, true, p, baseWrapper);
+            SetInformationFor(cachedIdx, true, p, baseWrapper.target, baseWrapper);
         }
 
-        internal static void SetInformationFor(int id, bool active, Profiler p, PatchWrapper wrapper)
+        internal static void SetInformationFor(int id, bool active, Profiler p, MethodInfo target, PatchWrapper wrapper)
         {
             activePatches[id] = active;
             profilers[id] = p;
-            methodBases[id] = wrapper.target;
+            methodBases[id] = target;
 
             foreach(var entry in wrapper.entries)
                 entryToLogs[entry].Add(id);

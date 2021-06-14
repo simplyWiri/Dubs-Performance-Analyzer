@@ -37,6 +37,8 @@ namespace Analyzer
         {
             Settings = GetSettings<Settings>();
 
+            Harmony.DEBUG = true;
+
             ThreadSafeLogger.Message($"[Analyzer] Loaded version {analyzerVersion.Major}.{analyzerVersion.Minor}.{analyzerVersion.Build} rev {analyzerVersion.Revision}");
 
 

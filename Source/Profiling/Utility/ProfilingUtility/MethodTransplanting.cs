@@ -25,7 +25,7 @@ namespace Analyzer.Profiling
         private static readonly HarmonyMethod generalTranspiler = new HarmonyMethod(typeof(MethodTransplanting), nameof(ProfileMethodTranspiler));
         private static readonly HarmonyMethod occurencesInTranspiler = new HarmonyMethod(typeof(MethodTransplanting), nameof(ProfileOccurencesInMethodTranspiler));
         internal static readonly HarmonyMethod internalMethodsTranspiler = null;
-        internal static readonly HarmonyMethod transpiledInMethodsTranspiler = new HarmonyMethod(typeof(MethodTransplanting), nameof(MethodTransplanting.ProfileAddedMethodsTranspiler));
+        internal static readonly HarmonyMethod transpiledInMethodsTranspiler = new HarmonyMethod(AccessTools.Method(typeof(MethodTransplanting), nameof(ProfileAddedMethodsTranspiler)), int.MinValue);
 
         
         // profiler registry
@@ -140,18 +140,23 @@ namespace Analyzer.Profiling
             insts.Compute();
 
             var changes = insts.changeSet.Where(t => t.change == ChangeType.Added)
-                .Where(t => t.value.IsCallInstruction() && t.value.operand is MethodInfo)
+                .Where(t => t.value.IsCallInstruction() && t.value.operand is MethodInfo m && m.DeclaringType.FullName.Contains("Analyzer") == false)
                 .OrderBy(c => c.index)
                 .ToList();
-
-            // No added instructions, we aren't interested in continuing
-            if (changes.Count == 0) return;
 
             var wrapper = new TranspiledInMethodPatchWrapper(baseMethod, changes);
             wrapper.AddEntry(typeof(H_HarmonyTranspilersInternalMethods));
 
-            while (patchedMethods.TryAdd(baseMethod, wrapper) is false) { }
-            Modbase.Harmony.Patch(baseMethod, transpiler: transpiledInMethodsTranspiler);
+            patchedMethods.TryAdd(baseMethod, wrapper);
+
+            try
+            {
+                Modbase.Harmony.Patch(baseMethod, transpiler: transpiledInMethodsTranspiler);
+            }
+            catch (Exception e)
+            {
+                ThreadSafeLogger.ReportException(e, $"Failed to profile the methods added to {Utility.GetSignature(baseMethod)}");
+            }
         }
 
         // **************** Transpilers
@@ -240,14 +245,24 @@ namespace Analyzer.Profiling
             var profLocal = ilGen.DeclareLocal(typeof(Profiler));
             var keyLocal = ilGen.DeclareLocal(typeof(string));
 
+            var baseProfLocal = ilGen.DeclareLocal(typeof(Profiler));
+            var baseKeyLocal = ilGen.DeclareLocal(typeof(string));
+
             ProfilerRegistry.RegisterPatch(origMethod, wrapper);
+
+            foreach (var inst in InsertProfilerStartupCode(insts, 0, ilGen, wrapper.target, baseKeyLocal, baseProfLocal, origMethod, wrapper.baseuid, null, null))
+                yield return inst;
 
             for (int i = 0, changeSetIdx = 0; i < insts.Count; i++)
             {
-                if (wrapper.changeSet[changeSetIdx].index != i)
+                if (insts[i].opcode == OpCodes.Ret)
+                {
+                    foreach (var ins in InsertProfilerEndCode(insts, i, ilGen, baseProfLocal))
+                        yield return ins;
+                }
+                else if (changeSetIdx >= wrapper.changeSet.Count || wrapper.changeSet[changeSetIdx].index != i)
                 {
                     yield return insts[i];
-                    continue;
                 }
                 else
                 {
@@ -261,20 +276,38 @@ namespace Analyzer.Profiling
 
                     yield return insts[i];
 
-                    foreach (var inst in InsertProfilerEndCode(insts, i + 1, ilGen, profLocal))
-                        yield return inst;
+                    var nextInstruction = insts[i + 1];
+
+                    if (nextInstruction.opcode == OpCodes.Ret)
+                    {
+                        var endLabel = ilGen.DefineLabel();
+                        var fullEndLabel = ilGen.DefineLabel();
+
+                        // localProf?.Stop();
+                        yield return new CodeInstruction(OpCodes.Ldloc, profLocal).MoveLabelsFrom(nextInstruction);
+                        yield return new CodeInstruction(OpCodes.Brfalse_S, endLabel);
+
+                        yield return new CodeInstruction(OpCodes.Ldloc, profLocal);
+                        yield return new CodeInstruction(OpCodes.Call, Profiler_Stop);
+
+                        // baseProf?.Stop();
+                        yield return new CodeInstruction(OpCodes.Ldloc, baseProfLocal).WithLabels(endLabel);
+                        yield return new CodeInstruction(OpCodes.Brfalse_S, fullEndLabel);
+
+                        yield return new CodeInstruction(OpCodes.Ldloc, baseProfLocal);
+                        yield return new CodeInstruction(OpCodes.Call, Profiler_Stop);
+
+                        yield return nextInstruction.WithLabels(fullEndLabel);
+                    }
+                    else
+                    {
+                        foreach (var inst in InsertProfilerEndCode(insts, i + 1, ilGen, profLocal))
+                            yield return inst;
+                    }
 
                     i++;
                     changeSetIdx++;
                 }
-                
-                if (changeSetIdx < wrapper.changeSet.Count) continue;
-
-                // If we have dealt with all the added instructions, can just return the rest of the method as normal
-                for (i++; i < insts.Count; i++)
-                    yield return insts[i];
-
-                break;
             }
         }
 
@@ -321,11 +354,12 @@ namespace Analyzer.Profiling
         public static IEnumerable<CodeInstruction> InsertProfilerEndCode(List<CodeInstruction> instructions, int index, ILGenerator ilGen, LocalBuilder profLocal)
         {
             var endLabel = ilGen.DefineLabel();
+            var noFinalInst = index >= instructions.Count;
             var nextInst = instructions[index];
 
             // localProf?.Stop();
             yield return new CodeInstruction(OpCodes.Ldloc, profLocal).MoveLabelsFrom(nextInst);
-            yield return new CodeInstruction(OpCodes.Brfalse_S, endLabel);
+            yield return noFinalInst ? new CodeInstruction(OpCodes.Ret) : new CodeInstruction(OpCodes.Brfalse_S, endLabel);
 
             yield return new CodeInstruction(OpCodes.Ldloc, profLocal);
             yield return new CodeInstruction(OpCodes.Call, Profiler_Stop);
