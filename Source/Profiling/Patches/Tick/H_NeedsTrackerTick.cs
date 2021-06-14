@@ -19,14 +19,9 @@ namespace Analyzer.Profiling
 
         public static string GetKeyName(Need __instance)
         {
-            if (ByPawn)
-            {
-                return __instance.GetType().Name + " " + __instance.pawn.Name;
-            }
-            else
-            {
-                return __instance.GetType().Name;
-            }
+            return ByPawn
+                ? __instance.GetType().Name + " " + __instance.pawn.Name
+                : __instance.GetType().Name;
         }
     }
 }

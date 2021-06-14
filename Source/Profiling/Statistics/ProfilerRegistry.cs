@@ -11,6 +11,12 @@ using HarmonyLib;
 
 namespace Analyzer.Profiling
 {
+    // Conceptually, we have a list of profilers `profilers`, and associated metadata `activePatches` & `methodBases`. These arrays remain 1-1 in correspondence.
+    // We then need a few slices into this list of profilers. 
+    // 1. Entry -> Patches | We need to know which patches belong to which entry (`entryToLogs`)
+    // 2. Name -> Profile | We need to know for dynamically named entries, what profiler belongs to them (`nameToProfiler`)
+    // 3. Name -> Wrapper | We need to know what base wrapper a dynamically named entry belongs to, in order to find the `activePatches` index (`keyToWrapper`)
+
     public static class ProfilerRegistry
     {
         private static readonly int ARRAY_EXPAND_SIZE = 0x80; // 128
@@ -28,6 +34,40 @@ namespace Analyzer.Profiling
 
         private static readonly FieldInfo Array_MethodBase = AccessTools.Field(typeof(ProfilerRegistry), nameof(methodBases));
         private static readonly FieldInfo Array_Bool = AccessTools.Field(typeof(ProfilerRegistry), nameof(activePatches));
+
+        public static PatchWrapper WrapperFromKey(string key)
+        {
+            return keyToWrapper.TryGetValue(key, out var pw) ? pw : null;
+        }
+
+        public static Profiler ProfilerFromKey(string key)
+        {
+            return nameToProfiler.TryGetValue(key, out var i) ? profilers[i] : keyToWrapper.TryGetValue(key, out var pw) ? profilers[pw.GetUIDFor(key)] : null;
+        }
+
+        public static bool AnyActiveProfilers()
+        {
+            return profilers.Any(p => p != null);
+        }
+
+        public static IEnumerable<Profiler> ActiveProfilersForEntry(Entry entry)
+        {
+            if (entry == null) return null;
+
+            var idxs = entryToLogs[entry.type].ToList();
+
+            return idxs
+                .Select(index => profilers[index])
+                .Where(p => p != null)
+                .ToList();
+        }
+
+        public static IEnumerable<Profiler> ActiveProfilers()
+        {
+            return profilers
+                    .Where(p => p != null)
+                    .ToList();
+        }
 
         // Thread safe
         public static void RegisterPatch(string key, PatchWrapper wrapper)
@@ -70,8 +110,8 @@ namespace Analyzer.Profiling
         {
             if (nameToProfiler.TryGetValue(name, out var cachedIdx) == false)
             {
-                var id = RetrieveNextId();
-                nameToProfiler.Add(name, id);
+                cachedIdx = RetrieveNextId();
+                nameToProfiler.Add(name, cachedIdx);
             }
 
             var baseWrapper = keyToWrapper[baseMethodName];
@@ -103,15 +143,6 @@ namespace Analyzer.Profiling
             }
 
             return index;
-        }
-
-        public static Profiler GetProfiler(string key)
-        {
-            return keyToWrapper.TryGetValue(key, out var value) 
-                ? profilers[value.GetUIDFor(key)] 
-                : nameToProfiler.TryGetValue(key, out var prof) 
-                    ? profilers[prof] 
-                    : null;
         }
 
         public static IEnumerable<CodeInstruction> GetIL(int index, bool activeCheck = false)

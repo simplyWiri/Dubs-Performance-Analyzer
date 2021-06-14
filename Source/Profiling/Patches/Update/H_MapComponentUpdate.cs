@@ -21,7 +21,6 @@ namespace Analyzer.Profiling
             yield return AccessTools.Method(typeof(SkyManager), nameof(SkyManager.SkyManagerUpdate));
             yield return AccessTools.Method(typeof(PowerNetManager), nameof(PowerNetManager.UpdatePowerNetsAndConnections_First));
             yield return AccessTools.Method(typeof(RegionGrid), nameof(RegionGrid.UpdateClean));
-            yield return AccessTools.Method(typeof(RegionAndRoomUpdater), nameof(RegionAndRoomUpdater.TryRebuildDirtyRegionsAndRooms));
             yield return AccessTools.Method(typeof(GlowGrid), nameof(GlowGrid.GlowGridUpdate_First));
             yield return AccessTools.Method(typeof(LordManager), nameof(LordManager.LordManagerUpdate));
             yield return AccessTools.Method(typeof(AreaManager), nameof(AreaManager.AreaManagerUpdate));

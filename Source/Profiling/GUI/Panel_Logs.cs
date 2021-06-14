@@ -194,7 +194,7 @@ namespace Analyzer.Profiling
 
                 lock (Analyzer.LogicLock)
                 {
-                    foreach (ProfileLog log in Analyzer.Logs)
+                    foreach (var log in Analyzer.Logs.Where(l => l.calls != 0))
                     {
                         DrawLog(log, ref currentListHeight);
                     }
@@ -334,7 +334,7 @@ namespace Analyzer.Profiling
                 return;
             }
 
-            var profile = ProfilerRegistry.GetProfiler(log.key);
+            var profile = ProfilerRegistry.ProfilerFromKey(log.key);
 
             // Is this entry currently 'active'?
             if (GUIController.CurrentEntry.onSelect != null)
@@ -407,10 +407,7 @@ namespace Analyzer.Profiling
                 }
                 else
                 {
-                    if (GUIController.CurrentProfiler == profile)
-                        GUIController.CurrentProfiler = null;
-                    else // This is now the 'active' profile  
-                        GUIController.CurrentProfiler = profile;
+                    GUIController.CurrentProfiler = GUIController.CurrentProfiler == profile ? null : profile;
                 }
             }
             else if (Event.current.button == 1) // right click
@@ -464,7 +461,7 @@ namespace Analyzer.Profiling
             yield return new FloatMenuOption($"Move to the {entryName} entry", () =>
             {
                 var entry = GUIController.EntryByName(entryName);
-                var wrapper = ProfilerRegistry.keyToWrapper[profiler.key];
+                var wrapper = ProfilerRegistry.WrapperFromKey(profiler.key);
 
                 wrapper.AddEntry(entry.type);
                 ProfilerRegistry.SetInformationFor(wrapper.GetUIDFor(log.key), false, profiler, wrapper);

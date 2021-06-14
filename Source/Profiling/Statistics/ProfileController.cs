@@ -17,21 +17,6 @@ namespace Analyzer.Profiling
         private static float deltaTime = 0.0f;
         public static float updateFrequency => 1 / Settings.updatesPerSecond; // how many ms per update (capped at every 0.05ms)
 
-        public static IEnumerable<Profiler> GetProfiles()
-        {
-            if (GUIController.CurrentEntry == null) return null;
-
-            return ProfilerRegistry.entryToLogs[GUIController.CurrentEntry.type]
-                .Select(index => ProfilerRegistry.profilers[index])
-                .Where(p => p != null)
-                .ToList();
-        }
-
-        public static Profiler GetProfiler(string key)
-        {
-            return ProfilerRegistry.profilers[ProfilerRegistry.keyToWrapper[key].GetUIDFor(key)];
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Profiler Start(string key, Func<string> GetLabel = null, Type type = null, MethodBase meth = null)
         {
@@ -58,14 +43,23 @@ namespace Analyzer.Profiling
         {
             if (Analyzer.CurrentlyPaused) return;
 
-            Analyzer.UpdateCycle(); // Update all our profilers, record measurements
-
-            deltaTime += Time.deltaTime;
-            if (deltaTime >= updateFrequency)
+            try
             {
-                Analyzer.FinishUpdateCycle(); // Process the information for all our profilers.
-                deltaTime -= updateFrequency;
+                Analyzer.UpdateCycle(); // Update all our profilers, record measurements
+
+                deltaTime += Time.deltaTime;
+                if (deltaTime >= updateFrequency)
+                {
+                    Analyzer.FinishUpdateCycle(); // Process the information for all our profilers.
+                    deltaTime -= updateFrequency;
+                }
             }
+            catch (Exception e)
+            {
+                ThreadSafeLogger.ReportException(e, "Failed to finalise update cycle, times are likely to be incorrect");
+            }
+
+
         }
     }
 }

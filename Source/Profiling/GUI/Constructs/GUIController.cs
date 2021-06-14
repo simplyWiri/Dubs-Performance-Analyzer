@@ -14,7 +14,7 @@ namespace Analyzer.Profiling
         private static Category currentCategory = Category.Settings;
 
         private static Dictionary<Category, Tab> tabs;
-        public static Dictionary<string, Type> types = new Dictionary<string, Type>();
+        public static Dictionary<string, Type> dynamicEntries = new Dictionary<string, Type>();
 
         public static Profiler CurrentProfiler {
             get => currentProfiler;
@@ -109,21 +109,22 @@ namespace Analyzer.Profiling
 
         public static void AddEntry(string name, Category category)
         {
-            Type myType = null;
-            if (types.ContainsKey(name))
+            Type entryType = null;
+            if (dynamicEntries.ContainsKey(name))
             {
-                myType = types[name];
+                entryType = dynamicEntries[name];
             }
             else
             {
-                myType = DynamicTypeBuilder.CreateType(name, null);
-                types.Add(name, myType);
+                entryType = DynamicTypeBuilder.CreateType(name, null);
+                dynamicEntries.Add(name, entryType);
             }
 
 #if DEBUG
             ThreadSafeLogger.Message($"Adding entry {name} into the category {category}");
 #endif
-            var entry = Entry.Create(name, category, myType, true, true);
+
+            var entry = Entry.Create(name, category, entryType, true, true);
             ProfilerRegistry.entryToLogs.TryAdd(entry.type, new HashSet<int>());
 
             if (Tab(category).entries.ContainsKey(entry))
@@ -132,7 +133,7 @@ namespace Analyzer.Profiling
             }
             else
             {
-                Tab(category).entries.Add(entry, myType);
+                Tab(category).entries.Add(entry, entryType);
             }
         }
 
