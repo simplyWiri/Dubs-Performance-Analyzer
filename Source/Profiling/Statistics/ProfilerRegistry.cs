@@ -27,7 +27,7 @@ namespace Analyzer.Profiling
         internal static bool[] activePatches = new bool[ARRAY_EXPAND_SIZE];
         internal static MethodBase[] methodBases = new MethodBase[ARRAY_EXPAND_SIZE];
         internal static Profiler[] profilers = new Profiler[ARRAY_EXPAND_SIZE];
-        internal static ConcurrentDictionary<string, PatchWrapper> keyToWrapper = new ConcurrentDictionary<string, PatchWrapper>();
+        internal static ConcurrentDictionary<int, PatchWrapper> keyToWrapper = new ConcurrentDictionary<int, PatchWrapper>();
         internal static ConcurrentDictionary<Type, HashSet<int>> entryToLogs = new ConcurrentDictionary<Type, HashSet<int>>();
 
         internal static Dictionary<string, int> nameToProfiler = new Dictionary<string, int>();
@@ -35,7 +35,7 @@ namespace Analyzer.Profiling
         private static readonly FieldInfo Array_MethodBase = AccessTools.Field(typeof(ProfilerRegistry), nameof(methodBases));
         private static readonly FieldInfo Array_Bool = AccessTools.Field(typeof(ProfilerRegistry), nameof(activePatches));
 
-        public static PatchWrapper WrapperFromKey(string key)
+        public static PatchWrapper WrapperFromKey(int key)
         {
             return keyToWrapper.TryGetValue(key, out var pw) ? pw : null;
         }
@@ -92,11 +92,8 @@ namespace Analyzer.Profiling
                         var index = RetrieveNextId();
                         mmpw.SetUID(i, index);
 
+                        keyToWrapper.TryAdd(index, wrapper);
                         SetInformationFor(index, true, null, mmpw.targets[i], wrapper);
-
-                        var subKey = Utility.GetSignature(mmpw.targets[i]);
-
-                        keyToWrapper.TryAdd(subKey, wrapper);
                     }
 
                     break;
@@ -112,30 +109,26 @@ namespace Analyzer.Profiling
                         var index = RetrieveNextId();
                         timpw.SetUID(i, index);
 
+                        keyToWrapper.TryAdd(index, wrapper);
                         SetInformationFor(index, true, null, timpw.changeSet[i].value.operand as MethodInfo, wrapper);
-
-                        var subKey = $"{key} : {Utility.GetSignature(timpw.changeSet[i].value.operand as MethodInfo, false)}";
-
-                        keyToWrapper.TryAdd(subKey, wrapper);
                     }
 
                     break;
                 }
             }
 
-            keyToWrapper.TryAdd(key, wrapper);
+            keyToWrapper.TryAdd(wrapper.GetUIDFor(key), wrapper);
         }
 
-        public static void RegisterProfiler(string name, string baseMethodName, Profiler p)
+        public static void RegisterProfiler(string name, int baseMethodKey, Profiler p)
         {
             if (nameToProfiler.TryGetValue(name, out var cachedIdx) == false)
             {
                 cachedIdx = RetrieveNextId();
                 nameToProfiler.Add(name, cachedIdx);
-                p.mKey = cachedIdx;
             }
 
-            var baseWrapper = keyToWrapper[baseMethodName];
+            var baseWrapper = keyToWrapper[baseMethodKey];
             SetInformationFor(cachedIdx, true, p, baseWrapper.target, baseWrapper);
         }
 
@@ -144,6 +137,8 @@ namespace Analyzer.Profiling
             activePatches[id] = active;
             profilers[id] = p;
             methodBases[id] = target;
+
+            if(p != null) p.mKey = id;
 
             foreach(var entry in wrapper.entries)
                 entryToLogs[entry].Add(id);
@@ -220,7 +215,10 @@ namespace Analyzer.Profiling
                 profilers = new Profiler[ARRAY_EXPAND_SIZE];
 
                 keyToWrapper.Clear();
-                entryToLogs.Clear();
+                foreach (var pair in entryToLogs)
+                {
+                    pair.Value.Clear();
+                }
                 nameToProfiler.Clear();
             }
         }

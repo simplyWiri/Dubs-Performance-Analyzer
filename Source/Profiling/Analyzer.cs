@@ -25,7 +25,7 @@ namespace Analyzer.Profiling
         private static Comparer<ProfileLog> percentComparer = Comparer<ProfileLog>.Create((first, second) => first.percent < second.percent ? 1 : -1);
         private static Comparer<ProfileLog> avpcComparer = Comparer<ProfileLog>.Create((first, second) => (first.total/first.calls) < (second.total/second.calls) ? 1 : -1);
         private static Comparer<ProfileLog> callsComparer = Comparer<ProfileLog>.Create((first, second) => first.calls < second.calls ? 1 : -1);
-        private static Comparer<ProfileLog> nameComparer = Comparer<ProfileLog>.Create((first, second) => string.Compare(first.label, second.label));
+        private static Comparer<ProfileLog> nameComparer = Comparer<ProfileLog>.Create((first, second) => string.Compare(first.Label, second.Label));
         private static Comparer<ProfileLog> totalComparer = Comparer<ProfileLog>.Create((first, second) => first.total < second.total ? 1 : -1);
         private static Comparer<ProfileLog> callspuComparer = Comparer<ProfileLog>.Create((first, second) => (first.calls/first.entries) < (second.calls/second.entries) ? 1 : -1);
 
@@ -145,7 +145,7 @@ namespace Analyzer.Profiling
             {
                 // o(m)
                 value.CollectStatistics(Mathf.Min(currentLogCount, MAX_LOG_COUNT - 1), out var average, out var max, out var total, out var calls, out var maxCalls);
-                newLogs.Add(new ProfileLog(currentLogCount, value.label, average, (float)max, value.key, (float)total, calls, maxCalls, value.type, value.meth, value.mKey, value.pinned));
+                newLogs.Add(new ProfileLog(value.mKey, currentLogCount, average, (float)max, (float)total, calls, value.pinned));
 
                 sumOfAverages += average;
             }

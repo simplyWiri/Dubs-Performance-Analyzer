@@ -79,11 +79,11 @@ namespace Analyzer.Performance
 
             public static void Checkbox(ProfileLog log)
             {
-                if (AlertFilter.TryGetValue(log.type, out var value)) AlertFilter[log.type] = !value;
-                else AlertFilter.Add(log.type, true);
+                //if (AlertFilter.TryGetValue(log.type, out var value)) AlertFilter[log.type] = !value;
+                //else AlertFilter.Add(log.type, true);
             }
 
-            public static bool Selected(Profiler _, ProfileLog log) => !(AlertFilter.TryGetValue(log.type, out var active) && active);
+            public static bool Selected(Profiler _, ProfileLog log) => false; //!(AlertFilter.TryGetValue(log.type, out var active) && active);
         }
 
 

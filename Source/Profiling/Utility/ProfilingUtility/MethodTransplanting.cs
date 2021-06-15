@@ -532,7 +532,7 @@ namespace Analyzer.Profiling
             if(getKeyName != null) // Add to the Profilers dictionary, so we cache creation.
             { 
                 yield return new CodeInstruction(OpCodes.Ldloc, keyLocal);
-                yield return new CodeInstruction(OpCodes.Ldstr, key);
+                yield return new CodeInstruction(OpCodes.Ldc_I4, methodKey);
                 yield return new CodeInstruction(OpCodes.Ldloc, profLocal);
                 yield return new CodeInstruction(OpCodes.Call, ProfilerRegistry_RegisterProfiler);
             }

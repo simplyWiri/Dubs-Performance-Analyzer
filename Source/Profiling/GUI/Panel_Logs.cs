@@ -91,7 +91,7 @@ namespace Analyzer.Profiling
                 case SortBy.Calls: return $" {log.calls.ToString("N0", CultureInfo.InvariantCulture)} ";
                 case SortBy.AvPc: return $" {(log.calls == 0 ? 0 : log.total/log.calls):0.000}ms ";
                 case SortBy.Percent: return $" {log.percent * 100:0.0}% ";
-                case SortBy.Name: return "    " + log.label;
+                case SortBy.Name: return "    " + log.Label;
                 case SortBy.Total: return $" {log.total:0.000}ms ";
                 case SortBy.CallsPu: return $" {Mathf.CeilToInt(log.calls/log.entries).ToString("N0", CultureInfo.InvariantCulture)} ";
             }
@@ -294,19 +294,13 @@ namespace Analyzer.Profiling
                 return true;
             }
 
-            if (log.meth != null && log.meth.Name.ContainsCaseless(s))
+            if (log.Method != null && Utility.GetSignature(log.Method, false).ContainsCaseless(s))
             {
                 Panel_TopRow.MatchType = "Assembly";
                 return true;
             }
 
-            if (log.type != null && log.type.Assembly.FullName.ContainsCaseless(s))
-            {
-                Panel_TopRow.MatchType = "Assembly";
-                return true;
-            }
-
-            if (log.label.ContainsCaseless(s))
+            if (log.Label.ContainsCaseless(s))
             {
                 Panel_TopRow.MatchType = "Label";
                 return true;
@@ -412,7 +406,7 @@ namespace Analyzer.Profiling
             }
             else if (Event.current.button == 1) // right click
             {
-                if (log.meth == null) return;
+                if (log.Method == null) return;
 
                 var options = RightClickDropDown(log, profile).ToList();
 
@@ -439,7 +433,7 @@ namespace Analyzer.Profiling
 
         private static IEnumerable<FloatMenuOption> RightClickDropDown(ProfileLog log, Profiler profiler)
         {
-            var meth = log.meth as MethodInfo;
+            var meth = log.Method as MethodInfo;
 
             if (Input.GetKey(KeyCode.LeftShift))
             {
@@ -461,10 +455,10 @@ namespace Analyzer.Profiling
             yield return new FloatMenuOption($"Move to the {entryName} entry", () =>
             {
                 var entry = GUIController.EntryByName(entryName);
-                var wrapper = ProfilerRegistry.WrapperFromKey(profiler.key);
+                var wrapper = ProfilerRegistry.WrapperFromKey(profiler.mKey);
 
                 wrapper.AddEntry(entry.type);
-                ProfilerRegistry.SetInformationFor(wrapper.GetUIDFor(log.key), false, profiler, wrapper.target, wrapper);
+                ProfilerRegistry.SetInformationFor(log.mKey, false, profiler, wrapper.target, wrapper);
                 GUIController.SwapToEntry(entryName);
             });
         }
