@@ -27,6 +27,7 @@ namespace Analyzer.Profiling
         internal static bool[] activePatches = new bool[ARRAY_EXPAND_SIZE];
         internal static MethodBase[] methodBases = new MethodBase[ARRAY_EXPAND_SIZE];
         internal static Profiler[] profilers = new Profiler[ARRAY_EXPAND_SIZE];
+        // todo replace with flat array
         internal static ConcurrentDictionary<int, PatchWrapper> keyToWrapper = new ConcurrentDictionary<int, PatchWrapper>();
         internal static ConcurrentDictionary<Type, HashSet<int>> entryToLogs = new ConcurrentDictionary<Type, HashSet<int>>();
 

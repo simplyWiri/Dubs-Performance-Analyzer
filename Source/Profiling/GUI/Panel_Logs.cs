@@ -437,8 +437,9 @@ namespace Analyzer.Profiling
 
             if (Input.GetKey(KeyCode.LeftShift))
             {
+                var entry = GUIController.CurrentEntry.type;
 
-                if (GUIController.CurrentEntry.name.Contains("Harmony")) // we can return an 'unpatch' for methods in a harmony tab
+                if (entry == typeof(H_HarmonyTranspilers) || entry == typeof(H_HarmonyPatches)) // we can return an 'unpatch' for methods in a harmony tab
                     yield return new FloatMenuOption("Unpatch Method (Destructive)", () => Utility.UnpatchMethod(meth));
 
                 yield return new FloatMenuOption("Unpatch methods that patch (Destructive)", () => Utility.UnpatchMethodsOnMethod(meth));
@@ -447,8 +448,7 @@ namespace Analyzer.Profiling
             var message = profiler.pinned ? "Unpin profile from entry" : "Pin profile to the top of the entry";
             yield return new FloatMenuOption(message, () => profiler.pinned = !profiler.pinned);
 
-            if (GUIController.CurrentEntry.type != typeof(H_HarmonyTranspilersInternalMethods))
-                yield return new FloatMenuOption("Profile the internal methods of", () => Utility.PatchInternalMethod(meth, GUIController.CurrentCategory));
+            yield return new FloatMenuOption("Profile the internal methods of", () => Utility.PatchInternalMethod(meth, GUIController.CurrentCategory));
 
             var entryName = GUIController.CurrentCategory == Category.Tick ? "Custom Tick" : "Custom Update";
 

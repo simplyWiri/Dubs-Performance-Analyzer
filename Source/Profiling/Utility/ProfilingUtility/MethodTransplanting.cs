@@ -147,7 +147,7 @@ namespace Analyzer.Profiling
                 .ToList();
 
             var wrapper = new TranspiledInMethodPatchWrapper(baseMethod, changes);
-            wrapper.AddEntry(typeof(H_HarmonyTranspilersInternalMethods));
+            wrapper.AddEntry(typeof(H_HarmonyTranspilers));
 
             transpilerMethods.TryAdd(baseMethod, wrapper);
 
@@ -337,7 +337,6 @@ namespace Analyzer.Profiling
             { // If we found a profiler - Start it, and skip to the start of execution of the method
                 yield return new CodeInstruction(OpCodes.Ldloc, profLocal);
                 yield return new CodeInstruction(OpCodes.Call, Profiler_Start);
-                yield return new CodeInstruction(OpCodes.Pop); // Profiler.Start returns itself so we pop it off the stack
                 yield return new CodeInstruction(OpCodes.Br, beginLabel);
             }
 
@@ -345,7 +344,6 @@ namespace Analyzer.Profiling
                 yield return inst;
 
             yield return new CodeInstruction(OpCodes.Call, Profiler_Start);
-            yield return new CodeInstruction(OpCodes.Pop); // profiler.Start returns itself
 
             instructions.ElementAt(index).WithLabels(beginLabel);
         }

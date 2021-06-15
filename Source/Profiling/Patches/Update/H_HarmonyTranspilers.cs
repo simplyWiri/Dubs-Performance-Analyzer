@@ -1,22 +1,12 @@
 ﻿using HarmonyLib;
-using RimWorld.IO;
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Reflection;
-using System.Reflection.Emit;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using UnityEngine;
-using Verse;
 
 namespace Analyzer.Profiling
 {
     [Entry("entry.update.harmonytranspilers", Category.Update)]
-    public static class H_HarmonyTranspilersInternalMethods
+    public static class H_HarmonyTranspilers
     {
         public static void ProfilePatch()
         {

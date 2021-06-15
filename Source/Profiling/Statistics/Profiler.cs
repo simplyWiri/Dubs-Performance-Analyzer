@@ -43,10 +43,9 @@ namespace Analyzer.Profiling
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Profiler Start()
+        public void Start()
         {
             stopwatch.Start();
-            return this;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
