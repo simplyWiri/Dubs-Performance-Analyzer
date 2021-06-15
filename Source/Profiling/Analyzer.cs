@@ -145,7 +145,7 @@ namespace Analyzer.Profiling
             {
                 // o(m)
                 value.CollectStatistics(Mathf.Min(currentLogCount, MAX_LOG_COUNT - 1), out var average, out var max, out var total, out var calls, out var maxCalls);
-                newLogs.Add(new ProfileLog(currentLogCount, value.label, average, (float)max, value.key, (float)total, calls, maxCalls, value.type, value.meth, value.pinned));
+                newLogs.Add(new ProfileLog(currentLogCount, value.label, average, (float)max, value.key, (float)total, calls, maxCalls, value.type, value.meth, value.mKey, value.pinned));
 
                 sumOfAverages += average;
             }

@@ -20,6 +20,7 @@ namespace Analyzer.Profiling
 
         public string label;
         public string key;
+        public int mKey = -1;
         public bool pinned;
 
         public int hitCounter = 0;
@@ -28,9 +29,10 @@ namespace Analyzer.Profiling
         public int[] hits;
         public uint currentIndex = 0; // ring buffer tracking
 
-        public Profiler(string key, string label, Type type, MethodBase meth)
+        public Profiler(string key, string label, Type type, MethodBase meth, int mKey = -1)
         {
             this.key = key;
+            this.mKey = mKey;
             this.meth = meth;
             this.label = label;
             this.stopwatch = new Watch();

@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
-using Analyzer.GCNotify;
 using UnityEngine;
 using Verse;
 
@@ -70,8 +69,6 @@ namespace Analyzer
             ThreadSafeLogger.Warning("                          Analyzer Running In Debug Mode                  ");
             ThreadSafeLogger.Warning("==========================================================================");
 #endif
-
-            GarbageMan.Init();
         }
 
 

@@ -9,6 +9,12 @@ namespace Analyzer.Profiling
 {
     public static class Extensions
     {
+        // ugly hack to get around this function showing when profiling methods which occur in multiple categories
+        public static bool TryGetValue(this Dictionary<string, int> dict, string key, out int value)
+        {
+            return dict.TryGetValue(key, out value);
+        }
+
         public static void InPlaceConcat<T>(this IEnumerable<T> instance, params IEnumerable<T>[] lists)
         {
             foreach (var list in lists)

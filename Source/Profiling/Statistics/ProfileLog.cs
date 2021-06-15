@@ -18,8 +18,9 @@ namespace Analyzer.Profiling
         public Type type;
         public MethodBase meth;
         public bool pinned;
+        public int mKey;
 
-        public ProfileLog(int entries, string label, double average, float max, string key, float total, float calls, float maxCalls, Type type, MethodBase meth = null, bool pinned = false)
+        public ProfileLog(int entries, string label, double average, float max, string key, float total, float calls, float maxCalls, Type type, MethodBase meth, int mKey, bool pinned)
         {
             this.entries = entries;
             this.label = label;
@@ -28,6 +29,7 @@ namespace Analyzer.Profiling
             this.max = max;
             this.type = type;
             this.meth = meth;
+            this.mKey = mKey;
             this.total = total;
             this.calls = calls;
             this.pinned = pinned;

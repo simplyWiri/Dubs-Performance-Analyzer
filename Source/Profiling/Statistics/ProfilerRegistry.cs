@@ -40,9 +40,9 @@ namespace Analyzer.Profiling
             return keyToWrapper.TryGetValue(key, out var pw) ? pw : null;
         }
 
-        public static Profiler ProfilerFromKey(string key)
+        public static Profiler ProfilerFromLog(ProfileLog log)
         {
-            return nameToProfiler.TryGetValue(key, out var i) ? profilers[i] : keyToWrapper.TryGetValue(key, out var pw) ? profilers[pw.GetUIDFor(key)] : null;
+            return profilers[log.mKey];
         }
 
         public static bool AnyActiveProfilers()
@@ -72,45 +72,54 @@ namespace Analyzer.Profiling
         // Thread safe
         public static void RegisterPatch(string key, PatchWrapper wrapper)
         {
-            if (wrapper is MethodPatchWrapper mpw)
+            switch (wrapper)
             {
-                if (mpw.uid == -1)
+                case MethodPatchWrapper mpw:
                 {
-                    int index = RetrieveNextId();
+                    if (mpw.uid == -1)
+                    {
+                        int index = RetrieveNextId();
 
-                    mpw.SetUID(index);
+                        mpw.SetUID(index);
+                    }
+                    SetInformationFor(mpw.uid, true, null, wrapper.target, wrapper);
+                    break;
                 }
-                SetInformationFor(mpw.uid, true, null, wrapper.target, wrapper);
-
-            } else if (wrapper is MultiMethodPatchWrapper mmpw)
-            {
-                for (int i = 0; i < mmpw.targets.Count; i++)
+                case MultiMethodPatchWrapper mmpw:
                 {
-                    var index = RetrieveNextId();
-                    mmpw.SetUID(i, index);
+                    for (int i = 0; i < mmpw.targets.Count; i++)
+                    {
+                        var index = RetrieveNextId();
+                        mmpw.SetUID(i, index);
 
-                    SetInformationFor(index, true, null, mmpw.targets[i], wrapper);
+                        SetInformationFor(index, true, null, mmpw.targets[i], wrapper);
 
-                    var subKey = Utility.GetSignature(mmpw.targets[i]);
+                        var subKey = Utility.GetSignature(mmpw.targets[i]);
 
-                    keyToWrapper.TryAdd(subKey, wrapper);
+                        keyToWrapper.TryAdd(subKey, wrapper);
+                    }
+
+                    break;
                 }
-            } else if (wrapper is TranspiledInMethodPatchWrapper timpw)
-            {
-                var bIdx = RetrieveNextId();
-                timpw.baseuid = bIdx;
-                SetInformationFor(bIdx, true, null, wrapper.target, wrapper);
-
-                for (int i = 0; i < timpw.changeSet.Count; i++)
+                case TranspiledInMethodPatchWrapper timpw:
                 {
-                    var index = RetrieveNextId();
-                    timpw.SetUID(i, index);
+                    var bIdx = RetrieveNextId();
+                    timpw.baseuid = bIdx;
+                    SetInformationFor(bIdx, true, null, wrapper.target, wrapper);
 
-                    SetInformationFor(index, true, null, timpw.changeSet[i].value.operand as MethodInfo, wrapper);
+                    for (int i = 0; i < timpw.changeSet.Count; i++)
+                    {
+                        var index = RetrieveNextId();
+                        timpw.SetUID(i, index);
 
-                    var subKey = $"{key} : {Utility.GetSignature(timpw.changeSet[i].value.operand as MethodInfo, false)}";
+                        SetInformationFor(index, true, null, timpw.changeSet[i].value.operand as MethodInfo, wrapper);
 
-                    keyToWrapper.TryAdd(subKey, wrapper);
+                        var subKey = $"{key} : {Utility.GetSignature(timpw.changeSet[i].value.operand as MethodInfo, false)}";
+
+                        keyToWrapper.TryAdd(subKey, wrapper);
+                    }
+
+                    break;
                 }
             }
 
@@ -123,6 +132,7 @@ namespace Analyzer.Profiling
             {
                 cachedIdx = RetrieveNextId();
                 nameToProfiler.Add(name, cachedIdx);
+                p.mKey = cachedIdx;
             }
 
             var baseWrapper = keyToWrapper[baseMethodName];

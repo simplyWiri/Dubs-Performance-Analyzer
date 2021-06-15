@@ -19,13 +19,15 @@ namespace Analyzer.Profiling
     public static class MethodTransplanting
     {
         public static ConcurrentDictionary<MethodBase, PatchWrapper> patchedMethods = new ConcurrentDictionary<MethodBase, PatchWrapper>();
+        public static ConcurrentDictionary<MethodBase, TranspiledInMethodPatchWrapper> transpilerMethods = new ConcurrentDictionary<MethodBase, TranspiledInMethodPatchWrapper>();
+
         private static readonly CodeInstMethEqual methComparer = new CodeInstMethEqual();
 
 
-        private static readonly HarmonyMethod generalTranspiler = new HarmonyMethod(typeof(MethodTransplanting), nameof(ProfileMethodTranspiler));
+        private static readonly HarmonyMethod generalTranspiler = new HarmonyMethod(AccessTools.Method(typeof(MethodTransplanting), nameof(ProfileMethodTranspiler)), int.MinValue);
         private static readonly HarmonyMethod occurencesInTranspiler = new HarmonyMethod(typeof(MethodTransplanting), nameof(ProfileOccurencesInMethodTranspiler));
         internal static readonly HarmonyMethod internalMethodsTranspiler = null;
-        internal static readonly HarmonyMethod transpiledInMethodsTranspiler = new HarmonyMethod(AccessTools.Method(typeof(MethodTransplanting), nameof(ProfileAddedMethodsTranspiler)), int.MinValue);
+        internal static readonly HarmonyMethod transpiledInMethodsTranspiler = new HarmonyMethod(AccessTools.Method(typeof(MethodTransplanting), nameof(ProfileAddedMethodsTranspiler)), int.MinValue + 1);
 
         
         // profiler registry
@@ -36,10 +38,10 @@ namespace Analyzer.Profiling
         // profiler
         private static readonly MethodInfo Profiler_Start = AccessTools.Method(typeof(Profiler), nameof(Profiler.Start));
         private static readonly MethodInfo Profiler_Stop = AccessTools.Method(typeof(Profiler), nameof(Profiler.Stop));
-        private static readonly ConstructorInfo ProfilerCtor = AccessTools.Constructor(typeof(Profiler), new Type[] { typeof(string), typeof(string), typeof(Type), typeof(MethodBase) });
+        private static readonly ConstructorInfo ProfilerCtor = AccessTools.Constructor(typeof(Profiler), new Type[] { typeof(string), typeof(string), typeof(Type), typeof(MethodBase), typeof(int) });
 
         // dictionary
-        private static readonly MethodInfo Dict_TryGetValue = AccessTools.Method(typeof(Dictionary<string, int>), "TryGetValue");
+        private static readonly MethodInfo Dict_TryGetValue = AccessTools.Method(typeof(Extensions), nameof(Extensions.TryGetValue));
 
         public class CodeInstMethEqual : EqualityComparer<CodeInstruction>
         {
@@ -147,7 +149,7 @@ namespace Analyzer.Profiling
             var wrapper = new TranspiledInMethodPatchWrapper(baseMethod, changes);
             wrapper.AddEntry(typeof(H_HarmonyTranspilersInternalMethods));
 
-            patchedMethods.TryAdd(baseMethod, wrapper);
+            transpilerMethods.TryAdd(baseMethod, wrapper);
 
             try
             {
@@ -164,7 +166,7 @@ namespace Analyzer.Profiling
         internal static IEnumerable<CodeInstruction> ProfileOccurencesInMethodTranspiler(MethodBase __originalMethod, IEnumerable<CodeInstruction> insts, ILGenerator ilGen)
         {
             var wrapper = patchedMethods[__originalMethod] as MultiMethodPatchWrapper;
-            var baseKey = Utility.GetSignature(__originalMethod);
+            var baseKey = Utility.GetSignature(__originalMethod, false);
             ProfilerRegistry.RegisterPatch(baseKey, wrapper);
 
             var profLocal = ilGen.DeclareLocal(typeof(Profiler));
@@ -182,7 +184,7 @@ namespace Analyzer.Profiling
                 }
 
                 var uid = wrapper.uids[index];
-                var key = Utility.GetSignature(wrapper.targets[index]);
+                var key = Utility.GetSignature(wrapper.targets[index], false);
                 var getKeyName = wrapper.getKeyNames[index];
                 var getLabel = wrapper.getLabels[index];
 
@@ -203,13 +205,10 @@ namespace Analyzer.Profiling
             var instructions = insts.ToList();
             var profLocal = ilGen.DeclareLocal(typeof(Profiler));
             var keyLocal = ilGen.DeclareLocal(typeof(string));
-            var beginLabel = ilGen.DefineLabel();
-            var noProfFastPathLabel = ilGen.DefineLabel();
-            var noProfLabel = ilGen.DefineLabel();
 
             var wrapper = patchedMethods[__originalMethod] as MethodPatchWrapper;
+            var key = Utility.GetSignature(__originalMethod as MethodInfo, false); // This translates our method into a human-legible key, I.e. Namespace.Type<Generic>:Method
 
-            var key = Utility.GetSignature(__originalMethod as MethodInfo, true); // This translates our method into a human-legible key, I.e. Namespace.Type<Generic>:Method
             ProfilerRegistry.RegisterPatch(key, wrapper);
 
             foreach (var inst in InsertProfilerStartupCode(instructions, 0, ilGen, wrapper.target, keyLocal, profLocal, key, wrapper.uid, wrapper.getKeyName, wrapper.getLabel))
@@ -221,7 +220,7 @@ namespace Analyzer.Profiling
             //      profiler.Stop();
             // }
             // return; // any labels here are moved to the start of the `if`
-            for(int i = 0; i < instructions.Count; i++)
+            for(var i = 0; i < instructions.Count; i++)
             {
                 var inst = instructions[i];
                 if (inst.opcode == OpCodes.Ret)
@@ -239,7 +238,8 @@ namespace Analyzer.Profiling
         internal static IEnumerable<CodeInstruction> ProfileAddedMethodsTranspiler(MethodBase __originalMethod, IEnumerable<CodeInstruction> instructions, ILGenerator ilGen)
         {
             var origMethod = Utility.GetSignature(__originalMethod, false);
-            var wrapper = patchedMethods[__originalMethod] as TranspiledInMethodPatchWrapper;
+            var wrapper = transpilerMethods[__originalMethod];
+
             var insts = instructions.ToList();
 
             var profLocal = ilGen.DeclareLocal(typeof(Profiler));
@@ -258,7 +258,7 @@ namespace Analyzer.Profiling
                 if (insts[i].opcode == OpCodes.Ret)
                 {
                     foreach (var ins in InsertProfilerEndCode(insts, i, ilGen, baseProfLocal))
-                        yield return ins;
+                            yield return ins;
                 }
                 else if (changeSetIdx >= wrapper.changeSet.Count || wrapper.changeSet[changeSetIdx].index != i)
                 {
@@ -523,7 +523,7 @@ namespace Analyzer.Profiling
                     foreach (var inst in ProfilerRegistry.GetIL(methodKey))
                         yield return inst;
                 }
-
+                yield return new CodeInstruction(OpCodes.Ldc_I4, methodKey);
                 yield return new CodeInstruction(OpCodes.Newobj, ProfilerCtor); // new Profiler();
                 yield return new CodeInstruction(OpCodes.Dup);
                 yield return new CodeInstruction(OpCodes.Stloc, profLocal);
