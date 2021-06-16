@@ -122,6 +122,18 @@ namespace Analyzer.Profiling
 
                     break;
                 }
+                case InternalMethodPatchWrapper impw:
+
+                    for (var i = 0; i < impw.targets.Count; i++)
+                    {
+                        var index = RetrieveNextId();
+                        impw.SetUID(i, index);
+
+                        keyToWrapper.TryAdd(index, impw);
+                        SetInformationFor(index, true, null, impw.targets[i], impw);
+                    }
+
+                    return;
             }
 
             keyToWrapper.TryAdd(wrapper.GetUIDFor(key), wrapper);

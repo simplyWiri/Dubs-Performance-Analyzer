@@ -144,7 +144,6 @@ namespace Analyzer.Profiling
             entry.SetActive(false);
 
             Tab(entry.category).entries.Remove(entry);
-            ProfilerRegistry.entryToLogs.Remove(entry.type, out _);
 
 #if DEBUG
             ThreadSafeLogger.Message($"Removing entry {name} from the category {entry.category.ToString()}");

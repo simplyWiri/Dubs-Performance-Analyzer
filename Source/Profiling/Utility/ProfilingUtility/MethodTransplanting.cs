@@ -20,13 +20,14 @@ namespace Analyzer.Profiling
     {
         public static ConcurrentDictionary<MethodBase, PatchWrapper> patchedMethods = new ConcurrentDictionary<MethodBase, PatchWrapper>();
         public static ConcurrentDictionary<MethodBase, TranspiledInMethodPatchWrapper> transpilerMethods = new ConcurrentDictionary<MethodBase, TranspiledInMethodPatchWrapper>();
+        public static ConcurrentDictionary<MethodBase, InternalMethodPatchWrapper> internalMethods = new ConcurrentDictionary<MethodBase, InternalMethodPatchWrapper>();
 
         private static readonly CodeInstMethEqual methComparer = new CodeInstMethEqual();
 
 
         private static readonly HarmonyMethod generalTranspiler = new HarmonyMethod(AccessTools.Method(typeof(MethodTransplanting), nameof(ProfileMethodTranspiler)), int.MinValue);
         private static readonly HarmonyMethod occurencesInTranspiler = new HarmonyMethod(typeof(MethodTransplanting), nameof(ProfileOccurencesInMethodTranspiler));
-        internal static readonly HarmonyMethod internalMethodsTranspiler = null;
+        internal static readonly HarmonyMethod internalMethodsTranspiler = new HarmonyMethod(AccessTools.Method(typeof(MethodTransplanting), nameof(ProfileInternalMethodsTranspiler)), int.MinValue);
         internal static readonly HarmonyMethod transpiledInMethodsTranspiler = new HarmonyMethod(AccessTools.Method(typeof(MethodTransplanting), nameof(ProfileAddedMethodsTranspiler)), int.MinValue + 1);
 
         
@@ -170,6 +171,32 @@ namespace Analyzer.Profiling
             catch (Exception e)
             {
                 ThreadSafeLogger.ReportException(e, $"Failed to profile the methods added to {Utility.GetSignature(baseMethod)}");
+            }
+        }
+
+        public static void ProfileInternalMethods(Type entry, MethodInfo baseMethod)
+        {
+            if (internalMethods.ContainsKey(baseMethod)) return;
+
+            var modInstList = PatchProcessor.GetCurrentInstructions(baseMethod);
+
+            var methods = modInstList
+                .Where(t => t.IsCallInstruction() && t.operand is MethodInfo m && m.DeclaringType.FullName.Contains("Analyzer") == false)
+                .Select(t => t.operand as MethodInfo)
+                .ToList();
+
+            var wrapper = new InternalMethodPatchWrapper(baseMethod, methods);
+            wrapper.AddEntry(entry);
+
+            internalMethods.TryAdd(baseMethod, wrapper);
+
+            try
+            {
+                Modbase.Harmony.Patch(baseMethod, transpiler: internalMethodsTranspiler);
+            }
+            catch (Exception e)
+            {
+                ThreadSafeLogger.ReportException(e, $"Failed to internal profile the method {Utility.GetSignature(baseMethod)}");
             }
         }
 
@@ -323,6 +350,35 @@ namespace Analyzer.Profiling
             }
         }
 
+        internal static IEnumerable<CodeInstruction> ProfileInternalMethodsTranspiler(MethodBase __originalMethod, IEnumerable<CodeInstruction> instructions, ILGenerator ilGen)
+        {
+            var wrapper = internalMethods[__originalMethod];
+            ProfilerRegistry.RegisterPatch(Utility.GetSignature(__originalMethod, false), wrapper);
+            var insts = instructions.ToList();
+
+            var profLocal = ilGen.DeclareLocal(typeof(Profiler));
+            var keyLocal = ilGen.DeclareLocal(typeof(string));
+
+            for (var i = 0; i < insts.Count; i++)
+            {
+                if (insts[i].IsCallInstruction() && insts[i].operand is MethodInfo target && target.DeclaringType.FullName.Contains("Analyzer") == false)
+                {
+                    var key = Utility.GetSignature(target);
+
+                    foreach (var inst in InsertProfilerStartupCode(insts, i, ilGen, target, keyLocal, profLocal, key, wrapper.GetUIDFor(key), null, null))
+                        yield return inst;
+
+                    yield return insts[i];
+
+                    foreach (var inst in InsertProfilerEndCode(insts, ++i, ilGen, profLocal))
+                        yield return inst;
+                }
+                else
+                {
+                    yield return insts[i];
+                }
+            }
+        }
 
         // **************** Transpiler Utility
 
@@ -555,114 +611,5 @@ namespace Analyzer.Profiling
             }
         }
 
-
-
-        // Utility for internal && transpiler profiling.
-        // This method takes a codeinstruction (of type Call or CallVirt), a key, a type, and a fieldinfo of a dictionary
-        // and will return a new codeinstruction, which the same opcode as the instruction passed to it, and the method
-        // will be a new dynamic method, which duplicates the functionality of the original method, while adding proiling to it.
-        // 
-        // The key is used for keying into the dictionary field you give, which will be expected to return a MethodInfo
-        // this will be then used in the call to ProfileController.Start
-        //public static CodeInstruction ReplaceMethodInstruction(CodeInstruction inst, string key, Type type, int index)
-        //{
-        //    var method = inst.operand as MethodInfo;
-        //    if (method == null) return inst;
-
-        //    Type[] parameters = null;
-
-
-        //    if (method.Attributes.HasFlag(MethodAttributes.Static)) // If we have a static method, we don't need to grab the instance
-        //        parameters = method.GetParameters().Select(param => param.ParameterType).ToArray();
-        //    else if (method.DeclaringType.IsValueType) // if we have a struct, we need to make the struct a ref, otherwise you resort to black magic
-        //        parameters = method.GetParameters().Select(param => param.ParameterType).Prepend(method.DeclaringType.MakeByRefType()).ToArray();
-        //    else // otherwise, we have an instance-nonstruct class, lets all our instance, and our parameter types
-        //        parameters = method.GetParameters().Select(param => param.ParameterType).Prepend(method.DeclaringType).ToArray();
-
-        //    DynamicMethod meth = new DynamicMethod(
-        //        method.Name + "_runtimeReplacement",
-        //        MethodAttributes.Public,
-        //        method.CallingConvention,
-        //        method.ReturnType,
-        //        parameters,
-        //        method.DeclaringType.IsInterface ? typeof(void) : method.DeclaringType,
-        //        true
-        //        );
-
-        //    ILGenerator gen = meth.GetILGenerator(512);
-
-        //    // local variable for profiler
-        //    LocalBuilder localProfiler = gen.DeclareLocal(typeof(Profiler));
-
-        //    InsertStartIL(type, gen, key, localProfiler, index);
-
-        //    // dynamically add our parameters, as many as they are, onto the stack for our original method
-        //    for (int i = 0; i < parameters.Length; i++)
-        //        gen.Emit(OpCodes.Ldarg, i);
-
-        //    gen.Emit(inst.opcode, method); // call our original method, (all parameters are on the stack)
-
-        //    InsertRetIL(type, gen, localProfiler); // wrap our function up, return a value if required
-
-        //    return new CodeInstruction(inst)
-        //    {
-        //        opcode = OpCodes.Call,
-        //        operand = meth // our created dynamic method
-        //    };
-        //}
-
-
-        // Utility for IL insertion
-        //public static void InsertStartIL(Type type, ILGenerator ilGen, string key, LocalBuilder profiler, int index)
-        //{
-        //    // if(Active && AnalyzerState.CurrentlyRunning)
-        //    // { 
-        //    Label skipLabel = ilGen.DefineLabel();
-
-        //    ilGen.Emit(OpCodes.Ldsfld, type.GetField("Active", BindingFlags.Public | BindingFlags.Static));
-        //    ilGen.Emit(OpCodes.Brfalse_S, skipLabel);
-
-        //    ilGen.Emit(OpCodes.Call, Analyzer_Get_CurrentlyProfiling);
-        //    ilGen.Emit(OpCodes.Brfalse_S, skipLabel);
-
-        //    ilGen.Emit(OpCodes.Ldstr, key);
-        //    // load our string to stack
-
-        //    ilGen.Emit(OpCodes.Ldnull);
-        //    ilGen.Emit(OpCodes.Ldnull);
-        //    // load our null variables
-
-        //    ilGen.Emit(OpCodes.Ldsfld, MethodInfoCache.internalArray);
-        //    ilGen.Emit(OpCodes.Ldc_I4, index);
-        //    ilGen.Emit(OpCodes.Ldc_I4_7);
-        //    ilGen.Emit(OpCodes.Shr);
-        //    ilGen.Emit(OpCodes.Callvirt, MethodInfoCache.accessList);
-        //    ilGen.Emit(OpCodes.Ldc_I4, index);
-        //    ilGen.Emit(OpCodes.Ldc_I4, 127);
-        //    ilGen.Emit(OpCodes.And);
-        //    ilGen.Emit(OpCodes.Ldelem_Ref);
-
-        //    ilGen.Emit(OpCodes.Call, ProfileController_Start);
-        //    ilGen.Emit(OpCodes.Stloc, profiler.LocalIndex);
-        //    // localProfiler = ProfileController.Start(key, null, null, null, null, KeyMethods[key]);
-
-        //    ilGen.MarkLabel(skipLabel);
-        //}
-
-        //public static void InsertRetIL(Type type, ILGenerator ilGen, LocalBuilder profiler)
-        //{
-        //    Label skipLabel = ilGen.DefineLabel();
-        //    // if(profiler != null)
-        //    // {
-        //    ilGen.Emit(OpCodes.Ldloc, profiler);
-        //    ilGen.Emit(OpCodes.Brfalse_S, skipLabel);
-        //    // profiler.Stop();
-        //    ilGen.Emit(OpCodes.Ldloc, profiler.LocalIndex);
-        //    ilGen.Emit(OpCodes.Call, Profiler_Stop);
-        //    // }
-        //    ilGen.MarkLabel(skipLabel);
-
-        //    ilGen.Emit(OpCodes.Ret);
-        //}
     }
 }

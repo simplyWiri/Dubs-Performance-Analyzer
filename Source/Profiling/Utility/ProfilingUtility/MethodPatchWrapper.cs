@@ -112,4 +112,30 @@ namespace Analyzer.Profiling
         public List<int> uids;
         public int baseuid;
     }
+
+    public class InternalMethodPatchWrapper : PatchWrapper
+    {
+        public InternalMethodPatchWrapper(MethodInfo target, List<MethodInfo> targets)
+            : base(target)
+        {
+            this.targets = targets;
+            this.uids = new List<int>(Enumerable.Repeat(-1, targets.Count));
+        }
+
+        public void SetUID(int target, int uid) => this.uids[target] = uid;
+
+        public override int GetUIDFor(string key)
+        {
+            for (var i = 0; i < targets.Count; i++)
+            {
+                if (Utility.GetSignature(targets[i], true).Equals(key))
+                    return uids[i];
+            }
+
+            return -1;
+        }
+
+        public List<MethodInfo> targets;
+        public List<int> uids;
+    }
 }

@@ -28,7 +28,6 @@ namespace Analyzer.Profiling
             patchedTypes.Clear();
             patchedMethods.Clear();
 
-            InternalMethodUtility.ClearCaches();
             MethodTransplanting.ClearCaches();
 
             ProfilerRegistry.Clear();
@@ -383,12 +382,6 @@ namespace Analyzer.Profiling
 
         public static void PatchInternalMethod(MethodInfo method, Category category)
         {
-            if (InternalMethodUtility.PatchedInternals.Contains(method))
-            {
-                Warn($"Trying to re-transpile an already profiled internal method - {Utility.GetSignature(method, false)}");
-                return;
-            }
-
             PatchInternalMethodFull(method, category);
         }
 
@@ -415,24 +408,23 @@ namespace Analyzer.Profiling
                 GUIController.AddEntry(guiEntry, category);
                 GUIController.SwapToEntry(guiEntry);
 
-                InternalMethodUtility.PatchedInternals.Add(method);
+                var entry = GUIController.EntryByName(guiEntry);
 
                 Task.Factory.StartNew(() =>
                 {
                     try
                     {
-                        Modbase.Harmony.Patch(method, transpiler: InternalMethodUtility.InternalProfiler);
+                        MethodTransplanting.ProfileInternalMethods(entry.type, method);
                     }
                     catch (Exception e)
                     {
-                        ReportException(e, $"Failed to patch the internal methods within {Utility.GetSignature(method, false)}");
+                        ReportException(e, $"Failed to patch the internal methods within {GetSignature(method, false)}");
                     }
                 });
             }
             catch (Exception e)
             {
                 ReportException(e, "Failed to set up state to patch internal methods");
-                InternalMethodUtility.PatchedInternals.Remove(method);
             }
         }
 

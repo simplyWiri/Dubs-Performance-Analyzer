@@ -16,6 +16,6 @@ namespace Analyzer.Profiling
             yield return AccessTools.Method(typeof(PawnRenderer), nameof(PawnRenderer.RenderPawnAt), new Type[] { typeof(Vector3), typeof(RotDrawMode), typeof(bool), typeof(bool)});
         }
         public static string GetLabel(PawnRenderer __instance) => $"{__instance.pawn.Label} - {__instance.pawn.ThingID}";
-        public static string GetName(PawnRenderer __instance) => __instance.pawn.GetHashCode().ToString();
+        public static string GetKeyName(PawnRenderer __instance) => __instance.pawn.GetHashCode().ToString();
     }
 }
