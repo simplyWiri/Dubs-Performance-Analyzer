@@ -73,10 +73,13 @@ namespace Analyzer.Profiling
         public static void PatchMethods(Type type)
         {
             // get the methods
-            var meths = (IEnumerable<PatchWrapper>)type.GetMethod("GetPatchMethods", BindingFlags.Public | BindingFlags.Static)?.Invoke(null, null);
+            var method = type.GetMethod("GetPatchMethods", BindingFlags.Public | BindingFlags.Static);
+            if (method == null) return;
 
-            if (meths != null)
-                UpdateMethods(type, meths);
+            var meths = (IEnumerable<PatchWrapper>)method.Invoke(null, null);
+            if (meths == null) return;
+
+            UpdateMethods(type, meths);
         }
 
         public static void UpdateMethods(Type type, IEnumerable<PatchWrapper> meths)
@@ -84,53 +87,62 @@ namespace Analyzer.Profiling
             var getKeyNameMeth = AccessTools.Method(type, "GetKeyName");
             var getLabelMeth = AccessTools.Method(type, "GetLabel");
 
-            foreach (var meth in meths)
+            Task.Factory.StartNew(delegate
             {
-                meth.AddEntry(type);
+                var availableThreads = Process.GetCurrentProcess().Threads.Count;
+                var parallelOpts = new ParallelOptions { MaxDegreeOfParallelism = Mathf.Max(1, availableThreads - 2) };
 
-                if (meth is MethodPatchWrapper mpw)
+                Parallel.ForEach(meths, parallelOpts, meth =>
                 {
-                    mpw.getKeyName = getKeyNameMeth;
-                    mpw.getLabel = getLabelMeth;
-                }
+                    meth.AddEntry(type);
 
-                ProfileMethod(meth);
-            }
+                    if (meth is MethodPatchWrapper mpw)
+                    {
+                        mpw.getKeyName = getKeyNameMeth;
+                        mpw.getLabel = getLabelMeth;
+                    }
+
+                    ProfileMethod(meth);
+                });
+            });
         }
 
         // This will profile the method `method.target`, and will (if not null) apply the custom namer & labeller
-        public static void ProfileMethod(PatchWrapper method)
+        private static void ProfileMethod(PatchWrapper method)
         { 
-            if (patchedMethods.TryGetValue(method.target, out _))
+            if (patchedMethods.TryGetValue(method.target, out var otherWrapper))
             {
+                var mName = Utility.GetSignature(otherWrapper.target, false);
 #if DEBUG
-                ThreadSafeLogger.Warning($"[Analyzer] Already patched method {Utility.GetSignature(method.target, false)}");
+                ThreadSafeLogger.Warning($"[Analyzer] Already patched method {mName}");
 #else
                 if (Settings.verboseLogging)
-                    ThreadSafeLogger.Warning($"[Analyzer] Already patched method {Utility.GetSignature(method.target, false)}");
+                    ThreadSafeLogger.Warning($"[Analyzer] Already patched method {mName}");
 #endif
+                foreach(var entry in method.entries)
+                    otherWrapper.AddEntry(entry);
+
+                ProfilerRegistry.SetInformationFor(otherWrapper.GetUIDFor(mName), true, null, otherWrapper.target, otherWrapper);
+
                 return;
             }
 
             patchedMethods.TryAdd(method.target, method);
 
-            Task.Factory.StartNew(delegate
+            try
             {
-                try
-                {
-                    var transpiler = method is MultiMethodPatchWrapper ? occurencesInTranspiler : generalTranspiler;
-                    Modbase.Harmony.Patch(method.target, transpiler: transpiler);
-                }
-                catch (Exception e)
-                {
+                var transpiler = method is MultiMethodPatchWrapper ? occurencesInTranspiler : generalTranspiler;
+                Modbase.Harmony.Patch(method.target, transpiler: transpiler);
+            }
+            catch (Exception e)
+            {
 #if DEBUG
-                    ThreadSafeLogger.ReportException(e, $"Failed to patch the method {Utility.GetSignature(method.target, false)}");
+                ThreadSafeLogger.ReportException(e, $"Failed to patch the method {Utility.GetSignature(method.target, false)}");
 #else
-                    if (Settings.verboseLogging)
-                        ThreadSafeLogger.ReportException(e, $"Failed to patch the method {Utility.GetSignature(method.target, false)}");
+                if (Settings.verboseLogging)
+                    ThreadSafeLogger.ReportException(e, $"Failed to patch the method {Utility.GetSignature(method.target, false)}");
 #endif
-                }
-            });
+            }
         }
 
         public static void ProfileInsertedMethods(MethodInfo baseMethod)

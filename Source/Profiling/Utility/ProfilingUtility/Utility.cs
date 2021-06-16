@@ -72,6 +72,8 @@ namespace Analyzer.Profiling
 
         internal static string GetSignature(MethodBase method, bool showParameters = true)
         {
+            if (method == null) return "";
+
             var firstParam = true;
             var sigBuilder = new StringBuilder(40);
 
@@ -484,12 +486,12 @@ namespace Analyzer.Profiling
 
                     patchedAssemblies.Add(assembly.FullName);
 
+
                     foreach (var type in assembly.GetTypes())
                     {
-                        foreach (var method in AccessTools.GetDeclaredMethods(type).Where(m => ValidMethod(m) && m.DeclaringType == type))
+                        foreach(var method in GetTypeMethods(type))
                         {
-                            if(!meths.Contains(method))
-                                meths.Add(method);
+                            meths.Add(method);
                         }
                     }
 
@@ -502,7 +504,7 @@ namespace Analyzer.Profiling
                 }
             }
 
-            //MethodTransplanting.UpdateMethods(GUIController.types[key], meths);
+            MethodTransplanting.UpdateMethods(GUIController.EntryByName(key).type, meths.Select(m => new MethodPatchWrapper(m)));
         }
     }
 }

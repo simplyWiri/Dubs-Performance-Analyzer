@@ -234,7 +234,6 @@ namespace Analyzer.Profiling
                     break;
                 case CurrentInput.Type:
                 case CurrentInput.TypeHarmony:
-                case CurrentInput.SubClasses:
                     searchThread = new Thread(() => PopulateSearchType(searchText));
                     break;
                 default:

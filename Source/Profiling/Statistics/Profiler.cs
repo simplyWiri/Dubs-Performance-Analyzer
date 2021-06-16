@@ -51,7 +51,7 @@ namespace Analyzer.Profiling
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Stop()
         {
-            var adj = stopwatch.Stop();
+            stopwatch.Stop();
             hitCounter++;
         }
 

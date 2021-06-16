@@ -54,8 +54,14 @@ namespace Analyzer.Profiling
         public static IEnumerable<Profiler> ActiveProfilersForEntry(Entry entry)
         {
             if (entry == null) return null;
+            
+            List<int> idxs;
 
-            var idxs = entryToLogs[entry.type].ToList();
+            var hs = entryToLogs[entry.type];
+            lock (hs)
+            {
+                idxs = hs.ToList();
+            }
 
             return idxs
                 .Select(index => profilers[index])
@@ -88,7 +94,7 @@ namespace Analyzer.Profiling
                 }
                 case MultiMethodPatchWrapper mmpw:
                 {
-                    for (int i = 0; i < mmpw.targets.Count; i++)
+                    for (var i = 0; i < mmpw.targets.Count; i++)
                     {
                         var index = RetrieveNextId();
                         mmpw.SetUID(i, index);
@@ -105,7 +111,7 @@ namespace Analyzer.Profiling
                     timpw.baseuid = bIdx;
                     SetInformationFor(bIdx, true, null, wrapper.target, wrapper);
 
-                    for (int i = 0; i < timpw.changeSet.Count; i++)
+                    for (var i = 0; i < timpw.changeSet.Count; i++)
                     {
                         var index = RetrieveNextId();
                         timpw.SetUID(i, index);
@@ -136,13 +142,20 @@ namespace Analyzer.Profiling
         internal static void SetInformationFor(int id, bool active, Profiler p, MethodInfo target, PatchWrapper wrapper)
         {
             activePatches[id] = active;
-            profilers[id] = p;
+            if(p != null)
+                profilers[id] = p;
             methodBases[id] = target;
 
             if(p != null) p.mKey = id;
 
-            foreach(var entry in wrapper.entries)
-                entryToLogs[entry].Add(id);
+            foreach (var entry in wrapper.entries)
+            {
+                var hs = entryToLogs[entry];
+                lock (hs)
+                {
+                    hs.Add(id);
+                }
+            }
         }
 
         public static int RetrieveNextId()
@@ -228,9 +241,13 @@ namespace Analyzer.Profiling
         {
             lock (manipulationLock)
             {
-                foreach (var i in entryToLogs[entry])
+                var hs = entryToLogs[entry];
+                lock (hs)
                 {
-                    activePatches[i] = value;
+                    foreach (var i in hs)
+                    {
+                        activePatches[i] = value;
+                    }
                 }
             }
         }

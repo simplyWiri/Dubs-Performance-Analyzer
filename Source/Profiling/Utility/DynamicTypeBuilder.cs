@@ -41,18 +41,9 @@ namespace Analyzer.Profiling
 #endif
 
             ThreadSafeLogger.Message(name);
-            TypeBuilder tb = ModuleBuilder.DefineType(name, staticAtt, typeof(Entry));
-
-            FieldBuilder active = tb.DefineField("Active", typeof(bool), FieldAttributes.Public | FieldAttributes.Static);
+            var tb = ModuleBuilder.DefineType(name, staticAtt, typeof(Entry));
 
             DynamicTypeBuilder.methods.Add(name, methods ?? new HashSet<MethodInfo>());
-            ConstructorBuilder ivCtor = tb.DefineConstructor(MethodAttributes.Public | MethodAttributes.Static, CallingConventions.Standard, new Type[0]);
-
-            // default initialise active to false.
-            ILGenerator ctorIL = ivCtor.GetILGenerator();
-            ctorIL.Emit(OpCodes.Ldc_I4_0);
-            ctorIL.Emit(OpCodes.Stsfld, active);
-            ctorIL.Emit(OpCodes.Ret);
 
             CreateProfilePatch(name, tb);
 
@@ -62,11 +53,9 @@ namespace Analyzer.Profiling
         // We already have our methods defined inside a dictionary, all we need to do is index into it at runtime
         private static void CreateProfilePatch(string name, TypeBuilder tb)
         {
-            MethodInfo func = AccessTools.Method(typeof(DynamicTypeBuilder), "PatchAll");
-
-            MethodBuilder ProfilePatch = tb.DefineMethod("GetPatchMethods", MethodAttributes.Public | MethodAttributes.Static, typeof(IEnumerable<MethodInfo>), null);
-
-            ILGenerator generator = ProfilePatch.GetILGenerator();
+            var func = AccessTools.Method(typeof(DynamicTypeBuilder), "PatchAll");
+            var getPatchMethods = tb.DefineMethod("GetPatchMethods", MethodAttributes.Public | MethodAttributes.Static, typeof(IEnumerable<PatchWrapper>), null);
+            var generator = getPatchMethods.GetILGenerator();
 
             generator.Emit(OpCodes.Ldstr, name);
             generator.Emit(OpCodes.Call, func);
@@ -74,11 +63,11 @@ namespace Analyzer.Profiling
         }
 
         // Does the one off work in a method, not bothered for performance so keeping it simple.
-        public static IEnumerable<MethodInfo> PatchAll(string name)
+        public static IEnumerable<PatchWrapper> PatchAll(string name)
         {
             if (methods.TryGetValue(name, out var meths))
             {
-                foreach (MethodInfo meth in meths)
+                foreach (var meth in meths)
                     yield return meth;
             }
         }

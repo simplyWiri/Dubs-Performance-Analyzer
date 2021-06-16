@@ -16,7 +16,6 @@ namespace Analyzer.Profiling
 		MethodHarmony,
 		InternalMethod,
 		Type,
-		SubClasses,
 		TypeHarmony,
 		Assembly
 	}
@@ -164,34 +163,31 @@ namespace Analyzer.Profiling
 
 		public static Rect DisplayInputField(Listing_Standard listing)
 		{
-			string FieldDescription = null;
+			var fieldDescription = "";
 
 			switch (input)
 			{
 				case CurrentInput.Method:
-					FieldDescription = "Type:Method";
+					fieldDescription = "Type:Method";
 					break;
 				case CurrentInput.Type:
-					FieldDescription = "Type";
+					fieldDescription = "Type";
 					break;
 				case CurrentInput.MethodHarmony:
-					FieldDescription = "Type:Method";
+					fieldDescription = "Type:Method";
 					break;
 				case CurrentInput.TypeHarmony:
-					FieldDescription = "Type";
+					fieldDescription = "Type";
 					break;
 				case CurrentInput.InternalMethod:
-					FieldDescription = "Type:Method";
-					break;
-				case CurrentInput.SubClasses:
-					FieldDescription = "Type";
+					fieldDescription = "Type:Method";
 					break;
 				case CurrentInput.Assembly:
-					FieldDescription = "Mod or PackageId";
+					fieldDescription = "Mod or PackageId";
 					break;
 			}
 
-			var descWidth = FieldDescription.GetWidthCached() + 20f;
+			var descWidth = fieldDescription.GetWidthCached() + 20f;
 			var rect = listing.GetRect(Text.LineHeight + 8);
 			var modeButt = rect.LeftPartPixels(descWidth);
 			var patchButt = rect.RightPartPixels(100f);
@@ -199,7 +195,7 @@ namespace Analyzer.Profiling
 			inputRect.width -= modeButt.width + patchButt.width;
 			inputRect.x = modeButt.xMax;
 
-			if (Widgets.ButtonText(modeButt, FieldDescription))
+			if (Widgets.ButtonText(modeButt, fieldDescription))
 			{
 				var list = new List<FloatMenuOption>
 				{
@@ -207,7 +203,6 @@ namespace Analyzer.Profiling
 					new FloatMenuOption(Strings.devoptions_input_methodinternal, () => input = CurrentInput.InternalMethod),
 					new FloatMenuOption(Strings.devoptions_input_methodharmony, () => input = CurrentInput.MethodHarmony),
 					new FloatMenuOption(Strings.devoptions_input_type, () => input = CurrentInput.Type),
-					new FloatMenuOption(Strings.devoptions_input_subclasses, () => input = CurrentInput.SubClasses),
 					new FloatMenuOption(Strings.devoptions_input_typeharmony, () => input = CurrentInput.TypeHarmony),
 					new FloatMenuOption(Strings.devoptions_input_assembly, () => input = CurrentInput.Assembly)
 				};
@@ -270,10 +265,6 @@ namespace Analyzer.Profiling
 					case CurrentInput.MethodHarmony:
 						methods = Utility.GetMethodsPatching(strinput);
 						break;
-					case CurrentInput.SubClasses:
-						// todo
-						methods = null;
-						break;
 					case CurrentInput.TypeHarmony:
 						methods = Utility.GetMethodsPatchingType(AccessTools.TypeByName(strinput));
 						break;
@@ -285,7 +276,7 @@ namespace Analyzer.Profiling
 						return;
 				}
 
-				//MethodTransplanting.UpdateMethods(entry, methods);
+				MethodTransplanting.UpdateMethods(entry, methods.Select(m => new MethodPatchWrapper(m)));
 				GUIController.Tab(cat).collapsed = false;
 
 				var entryName = (cat == Category.Tick) ? "Custom Tick" : "Custom Update";
