@@ -232,7 +232,7 @@ namespace Analyzer.Profiling
             }
 
             TooltipHandler.TipRegion(rhs, "Change what columns are visible");
-            if (Mouse.IsOver(rhs) && Event.current.button == 1)
+            if(Widgets.ButtonImage(rhs, Textures.Gear))
             {
                 var opts = new List<FloatMenuOption>();
                 foreach (var col in columns)
@@ -241,7 +241,6 @@ namespace Analyzer.Profiling
                 }
                 Find.WindowStack.Add(new FloatMenu(opts));
             }
-            GUI.DrawTexture(rhs, Textures.Gear);
 
             DubGUI.ResetFont();
         }

@@ -108,7 +108,7 @@ namespace Analyzer.Profiling
                 catch (Exception e)
                 {
 #if DEBUG
-                    ThreadSafeLogger.ReportException($"[Analyzer] Failed to patch entry, failed with the message {e.Message}");
+                    ThreadSafeLogger.ReportException(e, $"[Analyzer] Failed to patch entry, failed with the message {e.Message}");
 #endif
 #if NDEBUG
                     if (Settings.verboseLogging)

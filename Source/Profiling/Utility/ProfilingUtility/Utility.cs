@@ -215,7 +215,7 @@ namespace Analyzer.Profiling
         private static void ReportException(Exception e, string message)
         {
 #if DEBUG
-            ThreadSafeLogger.ReportException($"[Analyzer] Patching error: {message}");
+            ThreadSafeLogger.ReportException(e, $"[Analyzer] Patching error: {message}");
 #endif
 #if NDEBUG
             if (!displayMessages) return;
