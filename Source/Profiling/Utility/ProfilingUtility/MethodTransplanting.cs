@@ -107,7 +107,7 @@ namespace Analyzer.Profiling
                 ThreadSafeLogger.Warning($"[Analyzer] Already patched method {Utility.GetSignature(method.target, false)}");
 #else
                 if (Settings.verboseLogging)
-                    ThreadSafeLogger.Warning($"[Analyzer] Already patched method {Utility.GetSignature(wrapper.target, false)}");
+                    ThreadSafeLogger.Warning($"[Analyzer] Already patched method {Utility.GetSignature(method.target, false)}");
 #endif
                 return;
             }
@@ -127,7 +127,7 @@ namespace Analyzer.Profiling
                     ThreadSafeLogger.ReportException(e, $"Failed to patch the method {Utility.GetSignature(method.target, false)}");
 #else
                     if (Settings.verboseLogging)
-                        ThreadSafeLogger.ReportException(e, $"Failed to patch the method {Utility.GetSignature(wrapper.target, false)}");
+                        ThreadSafeLogger.ReportException(e, $"Failed to patch the method {Utility.GetSignature(method.target, false)}");
 #endif
                 }
             });
