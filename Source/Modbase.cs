@@ -3,12 +3,6 @@ using Analyzer.Profiling;
 using HarmonyLib;
 using RimWorld;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Threading;
-using Analyzer.GCNotify;
 using UnityEngine;
 using Verse;
 
@@ -29,7 +23,7 @@ namespace Analyzer
         // Build - Change Existing Feature
         // Revision - Hotfix
 
-        private static readonly Version analyzerVersion = new Version(1, 2, 0, 2);
+        private static readonly Version analyzerVersion = new Version(1, 3, 0, 2);
 
         public static bool isPatched = false;
 
@@ -53,10 +47,11 @@ namespace Analyzer
                 StaticHarmony.Patch(AccessTools.Method(typeof(GlobalControlsUtility), nameof(GlobalControlsUtility.DoTimespeedControls)),
                     prefix: new HarmonyMethod(typeof(GUIElement_TPS), nameof(GUIElement_TPS.Prefix)));
 
-                StaticHarmony.Patch(AccessTools.Method(typeof(Log), nameof(Log.Error)), prefix: new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.ErrorPrefix)), new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.ErrorPostfix)));
+                var logError = AccessTools.Method(typeof(Log), nameof(Log.Error), new Type[] { typeof(string) });
+
+                StaticHarmony.Patch(logError, prefix: new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.ErrorPrefix)), new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.ErrorPostfix)));
                 StaticHarmony.Patch(AccessTools.Method(typeof(Prefs), "get_DevMode"), prefix: new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.DevModePrefix)));
                 StaticHarmony.Patch(AccessTools.Method(typeof(DebugWindowsOpener), "DevToolStarterOnGUI"), prefix: new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.DebugKeysPatch)));
-
             }
 
             { // Performance Patches
@@ -68,8 +63,6 @@ namespace Analyzer
             ThreadSafeLogger.Warning("                          Analyzer Running In Debug Mode                  ");
             ThreadSafeLogger.Warning("==========================================================================");
 #endif
-
-            GarbageMan.Init();
         }
 
 

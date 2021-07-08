@@ -26,14 +26,13 @@ namespace Analyzer.Profiling
 
             Modbase.Harmony.Patch(jiff, pre, post);
 
-            jiff = AccessTools.Method(typeof(StatExtension), nameof(StatExtension.GetStatValueAbstract), new[] { typeof(AbilityDef), typeof(StatDef) });
+            jiff = AccessTools.Method(typeof(StatExtension), nameof(StatExtension.GetStatValueAbstract), new[] { typeof(AbilityDef), typeof(StatDef), typeof(Pawn) });
             pre = new HarmonyMethod(typeof(H_GetStatValue), nameof(PrefixAbility));
             Modbase.Harmony.Patch(jiff, pre, post);
 
             jiff = AccessTools.Method(typeof(StatWorker), nameof(StatWorker.GetValue), new[] { typeof(StatRequest), typeof(bool) });
             pre = new HarmonyMethod(typeof(H_GetStatValue), nameof(GetValueDetour));
             Modbase.Harmony.Patch(jiff, pre);
-
 
             HarmonyMethod go = new HarmonyMethod(typeof(H_GetStatValue), nameof(PartPrefix));
             HarmonyMethod biff = new HarmonyMethod(typeof(H_GetStatValue), nameof(PartPostfix));
