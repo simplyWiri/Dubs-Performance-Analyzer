@@ -31,6 +31,8 @@ namespace Analyzer
         public static Texture2D enter = ContentFinder<Texture2D>.Get("DPA/UI/enter", false);
         public static Texture2D refresh = ContentFinder<Texture2D>.Get("DPA/UI/Refresh", false);
         public static Texture2D pin = ContentFinder<Texture2D>.Get("DPA/UI/Pin", false);
+        public static Texture2D Burger = ContentFinder<Texture2D>.Get("DPA/UI/billButt", false);
+
 
     }
 

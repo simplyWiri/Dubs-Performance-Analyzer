@@ -76,7 +76,8 @@ namespace Analyzer
             {
                 if ( (attemptedInitialise is false) && AttemptToInitialiseKeys()) return;
                 
-                ThreadSafeLogger.ReportException(e, "Error while handling analyzer keybindings");
+                if(Settings.verboseLogging)
+                    ThreadSafeLogger.ReportException(e, "Error while handling analyzer keybindings");
             }
         }
     }

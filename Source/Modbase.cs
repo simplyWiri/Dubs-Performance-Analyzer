@@ -5,6 +5,7 @@ using RimWorld;
 using System;
 using UnityEngine;
 using Verse;
+using StackTraceUtility = Analyzer.Profiling.StackTraceUtility;
 
 namespace Analyzer 
 {
@@ -23,48 +24,77 @@ namespace Analyzer
         // Build - Change Existing Feature
         // Revision - Hotfix
 
-        private static readonly Version analyzerVersion = new Version(1, 3, 0, 2);
+        private static readonly Version analyzerVersion = new Version(1, 4, 0, 0);
 
         public static bool isPatched = false;
 
         public Modbase(ModContentPack content) : base(content)
         {
-            Settings = GetSettings<Settings>();
+            try
+            {
+                Settings = GetSettings<Settings>();
 
-            ThreadSafeLogger.Message($"[Analyzer] Loaded version {analyzerVersion.Major}.{analyzerVersion.Minor}.{analyzerVersion.Build} rev {analyzerVersion.Revision}");
+                ThreadSafeLogger.Message(
+                    $"[Analyzer] Loaded version {analyzerVersion.Major}.{analyzerVersion.Minor}.{analyzerVersion.Build} rev {analyzerVersion.Revision}");
 
+                _ = StaticHarmony;
+                _ = Harmony;
+                
+                // For registering harmony patches
+                StaticHarmony.Patch(AccessTools.Constructor(typeof(Harmony), new[] {typeof(string)}),
+                    new HarmonyMethod(typeof(RememberHarmonyIDs), nameof(RememberHarmonyIDs.Prefix)));
+                
 
-            { // Profiling
-                ModInfoCache.PopulateCache(Content.Name);
+                {
+                    // Profiling
+                    ModInfoCache.PopulateCache(Content.Name);
 
-                GUIController.InitialiseTabs();
+                    GUIController.InitialiseTabs();
 
-                // GUI needs to be initialised before xml (the tabs need to exist for entries to be inserted into them)
-               XmlParser.CollectXmlData();
-            }
+                    // GUI needs to be initialised before xml (the tabs need to exist for entries to be inserted into them)
+                    XmlParser.CollectXmlData();
 
-            { // Always Running
-                StaticHarmony.Patch(AccessTools.Method(typeof(GlobalControlsUtility), nameof(GlobalControlsUtility.DoTimespeedControls)),
-                    prefix: new HarmonyMethod(typeof(GUIElement_TPS), nameof(GUIElement_TPS.Prefix)));
+                    StackTraceUtility.Initialise();
+                }
 
-                var logError = AccessTools.Method(typeof(Log), nameof(Log.Error), new Type[] { typeof(string) });
+                {
+                    // Always Running
+                    StaticHarmony.Patch(
+                        AccessTools.Method(typeof(GlobalControlsUtility),
+                            nameof(GlobalControlsUtility.DoTimespeedControls)),
+                        prefix: new HarmonyMethod(typeof(GUIElement_TPS), nameof(GUIElement_TPS.Prefix)));
 
-                StaticHarmony.Patch(logError, prefix: new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.ErrorPrefix)), new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.ErrorPostfix)));
-                StaticHarmony.Patch(AccessTools.Method(typeof(Prefs), "get_DevMode"), prefix: new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.DevModePrefix)));
-                StaticHarmony.Patch(AccessTools.Method(typeof(DebugWindowsOpener), "DevToolStarterOnGUI"), prefix: new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.DebugKeysPatch)));
-            }
+                    var logError = AccessTools.Method(typeof(Log), nameof(Log.Error), new Type[] {typeof(string)});
 
-            { // Performance Patches
-                PerformancePatches.InitialisePatches();
-            }
+                    StaticHarmony.Patch(logError,
+                        prefix: new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.ErrorPrefix)),
+                        new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.ErrorPostfix)));
+                    StaticHarmony.Patch(AccessTools.Method(typeof(Prefs), "get_DevMode"),
+                        prefix: new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.DevModePrefix)));
+                    StaticHarmony.Patch(AccessTools.Method(typeof(DebugWindowsOpener), "DevToolStarterOnGUI"),
+                        prefix: new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.DebugKeysPatch)));
+                }
+
+                {
+                    // Performance Patches
+                    PerformancePatches.InitialisePatches();
+                }
 
 #if DEBUG
-            ThreadSafeLogger.Warning("==========================================================================");
-            ThreadSafeLogger.Warning("                          Analyzer Running In Debug Mode                  ");
-            ThreadSafeLogger.Warning("==========================================================================");
+                ThreadSafeLogger.Warning("==========================================================================");
+                ThreadSafeLogger.Warning("                          Analyzer Running In Debug Mode                  ");
+                ThreadSafeLogger.Warning("==========================================================================");
 #endif
+            }
+            catch (Exception e)
+            {
+                ThreadSafeLogger.ReportException(e, "Failed to initialise analyzer, dumping messages to debug log");
+            }
+            finally
+            {
+                ThreadSafeLogger.DisplayLogs();
+            }
         }
-
 
         public override void DoSettingsWindowContents(Rect inRect)
         {
