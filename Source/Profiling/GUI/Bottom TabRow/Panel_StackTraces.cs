@@ -372,10 +372,7 @@ namespace Analyzer.Profiling
 
                 var charDiff = (int)Math.Ceiling( (strLen + MAGIC) * ratio) ;
                 var newLen = (strLen) - charDiff;
-                var str = value.Substring(left ? charDiff : 0, newLen);
-
-                str = str.Insert(left ? 0 : str.Length, "...");
-                
+                var str = ClipToSize(value, charDiff, newLen, left);
                 Widgets.Label(bounding, str);
                 TooltipHandler.TipRegion(bounding, value);
             }
@@ -385,6 +382,32 @@ namespace Analyzer.Profiling
             }
         }
 
+        // Intelligently trims a method string (params first)
+        private static string ClipToSize(string str, int charsToRemove, int newLen, bool left)
+        {
+            // No bracket, its not a method
+            var lhsParams = str.FirstIndexOf(c => c == '(');
+            if (lhsParams == -1) return str.Substring(left ? charsToRemove : 0, newLen);
+            
+            // How many characters between the parens
+            var paramChars = str.Length - lhsParams;
+            
+            // Enough to warrant chopping it off ( replace it with (...) )
+            if (paramChars > 5)
+            {
+                str = str.Substring(0, lhsParams) + "(...)";
+                charsToRemove -= paramChars - 5;
+            }
+
+            // Trim the rest of the string (if required)
+            if (charsToRemove > 0)
+            {
+                str = str.Insert(left ? 0 : str.Length, "...");
+                str = str.Substring(left ? charsToRemove : 0, Mathf.Min(newLen, str.Length));
+            }
+
+            return str;
+        }
 
         // This will be added as a Postfix to the method which we want to gather stack trace information for
         // it will only effect one method, so we can skip the check, and it will not slow down other profilers
