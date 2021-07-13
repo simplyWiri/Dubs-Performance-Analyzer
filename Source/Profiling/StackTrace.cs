@@ -82,7 +82,7 @@ namespace Analyzer.Profiling
     }
     public static class StackTraceUtility
     {
-        public static Dictionary<string, StackTraceInformation> traces = new Dictionary<string, StackTraceInformation>();
+        public static Dictionary<long, StackTraceInformation> traces = new Dictionary<long, StackTraceInformation>();
         internal static Dictionary<MethodBase, string> cachedStrings = new Dictionary<MethodBase, string>();
         internal static Dictionary<string, Assembly> harmonyIds = new Dictionary<string, Assembly>();
         internal static readonly Dictionary<Assembly, string> mods = new Dictionary<Assembly, string>();
@@ -111,11 +111,16 @@ namespace Analyzer.Profiling
 
         public static void Add(StackTrace trace)
         {
-            // Todo, less shit hashing
-            var key = trace.ToString();
+            long seed = 0x9e3779b9;
+            
+            foreach (var m in trace.GetFrames().Select(s => s.GetMethod()))
+            {
+                seed ^= m.GetHashCode() + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            }
+            
 
-            if(traces.TryGetValue(key, out var value)) value.Count++;
-            else traces.Add(key, new StackTraceInformation(trace));
+            if(traces.TryGetValue(seed, out var value)) value.Count++;
+            else traces.Add(seed, new StackTraceInformation(trace));
         }
 
         public static void Reset()

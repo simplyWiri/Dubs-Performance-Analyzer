@@ -16,17 +16,17 @@ namespace Analyzer.Profiling
         public static bool currentlyTracking = false;
         public static int currentTrackedStacktraces = 0;
         public static int currentGoalTrackedTraces = 100_000;
-        public static string currentTrace = "";
+        public static long currentTrace = 0;
         public static MethodInfo currentMethod = null;
         public static MethodInfo postfix = typeof(Panel_StackTraces).GetMethod(nameof(StacktracePostfix), BindingFlags.Public | BindingFlags.Static);
-        private static StackTraceInformation CurrentTrace => currentTrace.NullOrEmpty() ? null : StackTraceUtility.traces[currentTrace];
+        private static StackTraceInformation CurrentTrace => (currentTrace == 0) ? null : StackTraceUtility.traces[currentTrace];
         private static Vector2 scrollPosition = new Vector2(0, 0);
 
         private static void Reset(MethodInfo oldMethod)
         {
             if (oldMethod == null) return; 
 
-            currentTrace = "";
+            currentTrace = 0;
             StackTraceUtility.Reset();
             currentTrackedStacktraces = 0;
             Modbase.Harmony.CreateProcessor(oldMethod).Unpatch(postfix);
@@ -53,7 +53,7 @@ namespace Analyzer.Profiling
             rect.AdjustVerticallyBy(30f);
             DrawCurrentStatus(statusBox, currentMethod);
 
-            if (currentTrace == "")
+            if (currentTrace == 0)
             {
                 if(StackTraceUtility.traces.Count > 0)
                     currentTrace = StackTraceUtility.traces.MaxBy(t => t.Value.Count).Key;
@@ -169,7 +169,7 @@ namespace Analyzer.Profiling
                 if (currentlyTracking is false)
                 {
                     StackTraceUtility.Reset();
-                    currentTrace = "";
+                    currentTrace = 0;
                     currentTrackedStacktraces = 0;
                     
                     Modbase.Harmony.Patch(method, postfix: new HarmonyMethod(postfix));
