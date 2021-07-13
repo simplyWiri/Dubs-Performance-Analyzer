@@ -233,6 +233,21 @@ namespace Analyzer.Profiling
             GUI.color = color;
         }
 
+        public static string EntryWithAlignment(int entryIdx, string sign, int alignment)
+        {
+            return $"{{{entryIdx}, {sign}{alignment}}}";
+        }
+        
+        public static string CenterString(this string s, int width)
+        {
+            if (s.Length >= width) return s;
+
+            int leftPadding = (width - s.Length) / 2;
+            int rightPadding = width - s.Length - leftPadding;
+
+            return new string(' ', leftPadding) + s + new string(' ', rightPadding);
+        }
+        
         public static Rect Scale(this Rect rect, float w, float h)
         {
             var biff = new Rect(rect);
@@ -244,6 +259,19 @@ namespace Analyzer.Profiling
         public static Rect Morph(this Rect rect, float x = 0, float y = 0, float w = 0, float h = 0)
         {
             return rect = new Rect(rect.x + x, rect.y + y, rect.width + w, rect.height + h);
+        }
+
+        public static Rect CenterWithDimensions(this Rect rect, float width, float height)
+        {
+            var x = rect.x;
+            var y = rect.y;
+            var w = rect.width;
+            var h = rect.height;
+
+            var wdx = w - width;
+            var wdy = h - height;
+
+            return  new Rect(x + wdx / 2f, y + wdy / 2f, width, height);
         }
 
         public static void CopyToClipboard(this string s)

@@ -1,11 +1,7 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
+﻿using System.Linq;
 using Analyzer.Profiling;
 using HarmonyLib;
 using RimWorld;
-using RimWorld.Planet;
 using Verse;
 
 namespace Analyzer.Fixes
@@ -26,7 +22,7 @@ namespace Analyzer.Fixes
             foreach (var wo in g.World.worldObjects.worldObjects.Where(w => w.factionInt.def == null))
             {
                 var faction = factionManger.allFactions.Where(f => !f.IsPlayer && (!f.hidden ?? true)).RandomElement();
-                
+
                 ThreadSafeLogger.Warning($"[Analyzer] Changed the world object {wo.Label}'s faction from {wo.factionInt.name}(Removed) to {faction.name}");
                 wo.factionInt = faction;
             }
@@ -34,7 +30,7 @@ namespace Analyzer.Fixes
             foreach (var wp in g.World.worldPawns.AllPawnsAliveOrDead.Where(p => p.factionInt.def == null))
             {
                 var faction = factionManger.allFactions.Where(f => !f.IsPlayer && (!f.hidden ?? true)).RandomElement();
-                
+
                 ThreadSafeLogger.Warning($"[Analyzer] Changed the pawn {wp.Label}'s faction from {wp.factionInt.name}(Removed) to {faction.name}");
                 wp.factionInt = faction;
             }

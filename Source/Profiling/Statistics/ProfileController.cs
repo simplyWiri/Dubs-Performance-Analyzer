@@ -25,15 +25,15 @@ namespace Analyzer.Profiling
         public static Dictionary<string, Profiler> Profiles => profiles;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Profiler Start(string key, Func<string> GetLabel = null, Type type = null, Def def = null, Thing thing = null, MethodBase meth = null)
+        public static Profiler Start(string key, Func<string> GetLabel = null, Type type = null, MethodBase meth = null)
         {
             if (!Analyzer.CurrentlyProfiling) return null;
 
             if (Profiles.TryGetValue(key, out var prof)) return prof.Start();
             else
             {
-                Profiles[key] = GetLabel != null ? new Profiler(key, GetLabel(), type, def, thing, meth)
-                                                 : new Profiler(key, key, type, def, thing, meth);
+                Profiles[key] = GetLabel != null ? new Profiler(key, GetLabel(), type, meth)
+                                                 : new Profiler(key, key, type, meth);
 
                 return Profiles[key].Start();
             }

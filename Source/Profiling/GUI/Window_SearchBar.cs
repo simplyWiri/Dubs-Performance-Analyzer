@@ -8,7 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using HarmonyLib;
 using UnityEngine;
-using UnityEngine.Experimental.PlayerLoop;
 using Verse;
 
 namespace Analyzer.Profiling

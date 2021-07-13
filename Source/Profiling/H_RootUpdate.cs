@@ -1,6 +1,5 @@
 ﻿using HarmonyLib;
 using System;
-using Analyzer.GCNotify;
 using UnityEngine;
 using Verse;
 

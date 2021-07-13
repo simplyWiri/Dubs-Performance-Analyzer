@@ -15,7 +15,10 @@ namespace Analyzer.Profiling
 
         public static IEnumerable<MethodInfo> GetPatchMethods()
         {
-            yield return AccessTools.Method(typeof(PawnRenderer), nameof(PawnRenderer.RenderPawnAt), new Type[] { typeof(Vector3), typeof(RotDrawMode), typeof(bool), typeof(bool)});
+            //foreach (var method in Utility.GetTypeMethods(typeof(PawnRenderer))
+            //    yield return method;
+
+            yield return AccessTools.Method(typeof(PawnRenderer), nameof(PawnRenderer.RenderPawnAt));
         }
         public static string GetLabel(PawnRenderer __instance) => $"{__instance.pawn.Label} - {__instance.pawn.ThingID}";
         public static string GetName(PawnRenderer __instance) => __instance.pawn.GetHashCode().ToString();

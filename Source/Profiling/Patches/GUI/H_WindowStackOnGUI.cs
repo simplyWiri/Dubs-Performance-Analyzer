@@ -34,7 +34,7 @@ namespace Analyzer.Profiling
                     name = string.Intern($"{__instance.windowStackOnGUITmpList[i].GetType()} ExtraOnGUI");
                 }
 
-                Profiler prof = ProfileController.Start(name, null, null, null, null, __originalMethod);
+                Profiler prof = ProfileController.Start(name, null, null, __originalMethod);
                 __instance.windowStackOnGUITmpList[i].ExtraOnGUI();
                 prof.Stop();
             }
@@ -62,7 +62,7 @@ namespace Analyzer.Profiling
                     name = string.Intern($"{__instance.windowStackOnGUITmpList[j].GetType()} WindowOnGUI");
                 }
 
-                Profiler prof = ProfileController.Start(name, null, null, null, null, __originalMethod);
+                Profiler prof = ProfileController.Start(name, null, null, __originalMethod);
                 __instance.windowStackOnGUITmpList[j].WindowOnGUI();
                 prof.Stop();
             }

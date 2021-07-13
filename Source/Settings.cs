@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Analyzer.Performance;
 using Analyzer.Profiling;
 using UnityEngine;
@@ -32,6 +33,7 @@ namespace Analyzer
             Scribe_Values.Look(ref GraphSettings.showMax, "showMax");
             Scribe_Values.Look(ref GraphSettings.showAxis, "showAxis", true);
             Scribe_Values.Look(ref GraphSettings.showGrid, "showGrid", true);
+            Scribe_Collections.Look(ref Panel_Logs.columns, "columnSettings");
 
 
             Scribe_Values.Look(ref timeColour, "timeColour", new Color32(79, 147, 191, 255));

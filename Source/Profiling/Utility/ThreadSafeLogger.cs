@@ -74,7 +74,7 @@ namespace Analyzer.Profiling
 
         public static void ReportException(Exception e, string message)
         {
-            var finalMessage = $"{MOD_TAG} {message}, exception: {e.Message}, occured at \n{ExtractTrace(new StackTrace(e, false))}";
+            var finalMessage = $"{message}, exception: {e.Message}, occured at \n{ExtractTrace(new StackTrace(e, false))}";
             Error(finalMessage);
         }
 
@@ -117,16 +117,7 @@ namespace Analyzer.Profiling
 
         internal static string ExtractTrace(StackTrace stackTrace)
         {
-            var stringBuilder = new StringBuilder(255);
-            for (int i = 0; i < stackTrace.FrameCount; i++)
-            {
-                var method = stackTrace.GetFrame(i).GetMethod();
-
-                stringBuilder.Append("  at ");
-                stringBuilder.Append(Utility.GetSignature(method));
-                stringBuilder.Append("\n");
-            }
-            return stringBuilder.ToString();
+            return StackTraceUtility.GetStackTraceString(stackTrace, out _);
         }
     }
 }

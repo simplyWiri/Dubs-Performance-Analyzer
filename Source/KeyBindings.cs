@@ -14,34 +14,47 @@ namespace Analyzer
         private static KeyBindingDef key;
         private static KeyBindingDef restartkey;
         private static KeyBindingDef alertKey;
+        private static bool attemptedInitialise = false;
 
         static H_KeyPresses()
         {
-            key = KeyBindingDef.Named("DubsOptimizerKey");
-            restartkey = KeyBindingDef.Named("DubsOptimizerRestartKey");
-            alertKey = KeyBindingDef.Named("dpa_ToggleAlertBlock");
-            PatchMe(Modbase.StaticHarmony);
+            var _ = AttemptToInitialiseKeys();
         }
-
-        public static void PatchMe(Harmony harmony)
+        
+        public static bool AttemptToInitialiseKeys()
         {
-            var biff = new HarmonyMethod(typeof(H_KeyPresses).GetMethod(nameof(OnGUI)));
-            var skiff = typeof(UIRoot_Entry).GetMethod(nameof(UIRoot_Entry.UIRootOnGUI));
-            harmony.Patch(skiff, biff);
+            attemptedInitialise = true;
+            try
+            {
+                key = KeyBindingDef.Named("DubsOptimizerKey");
+                restartkey = KeyBindingDef.Named("DubsOptimizerRestartKey");
+                alertKey = KeyBindingDef.Named("dpa_ToggleAlertBlock");
+                
+                var biff = new HarmonyMethod(typeof(H_KeyPresses).GetMethod(nameof(OnGUI)));
+                var skiff = typeof(UIRoot_Entry).GetMethod(nameof(UIRoot_Entry.UIRootOnGUI));
+                Modbase.StaticHarmony.Patch(skiff, biff);
 
-            skiff = typeof(UIRoot_Play).GetMethod(nameof(UIRoot_Play.UIRootOnGUI));
-            harmony.Patch(skiff, biff);
+                skiff = typeof(UIRoot_Play).GetMethod(nameof(UIRoot_Play.UIRootOnGUI));
+                Modbase.StaticHarmony.Patch(skiff, biff);
+            }
+            catch (Exception e)
+            {
+                ThreadSafeLogger.ReportException(e, "Failed to load keybindings");
+                return false;
+            }
+
+            return true;
         }
 
         public static void OnGUI()
         {
-            if (restartkey.KeyDownEvent)
-            {
-                GenCommandLine.Restart();
-            }
-
             try
             {
+                if (restartkey.KeyDownEvent)
+                {
+                    GenCommandLine.Restart();
+                }
+                
                 if (key != null && key.KeyDownEvent)
                 {
                     if (Find.WindowStack.WindowOfType<Window_Analyzer>() != null)
@@ -53,15 +66,18 @@ namespace Analyzer
                         Find.WindowStack.Add(new Window_Analyzer());
                     }
                 }
+                
+                if (alertKey.KeyDownEvent)
+                {
+                    H_AlertsReadoutUpdate.DisableAlerts = !H_AlertsReadoutUpdate.DisableAlerts;
+                }
             }
             catch (Exception e)
             {
-                ThreadSafeLogger.ReportException(e, "Error while creating the Analyzer window");
-            }
-
-            if (alertKey.KeyDownEvent)
-            {
-                H_AlertsReadoutUpdate.DisableAlerts = !H_AlertsReadoutUpdate.DisableAlerts;
+                if ( (attemptedInitialise is false) && AttemptToInitialiseKeys()) return;
+                
+                if(Settings.verboseLogging)
+                    ThreadSafeLogger.ReportException(e, "Error while handling analyzer keybindings");
             }
         }
     }

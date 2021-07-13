@@ -17,8 +17,11 @@ namespace Analyzer.Profiling
 
         public static IEnumerable<MethodInfo> GetPatchMethods()
         {
-            foreach (var meth in typeof(WorldComponent).AllSubclasses().Select(wc => wc.GetMethod("WorldComponentTick")))
-                yield return meth;
+            foreach (var type in typeof(WorldComponent).AllSubclasses())
+            {
+                var meth = AccessTools.Method(type, "WorldComponentTick");
+                if (meth.DeclaringType == type) yield return meth;
+            }
 
             yield return AccessTools.Method(typeof(WorldPawns), nameof(WorldPawns.WorldPawnsTick));
             yield return AccessTools.Method(typeof(FactionManager), nameof(FactionManager.FactionManagerTick));

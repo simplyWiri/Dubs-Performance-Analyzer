@@ -50,9 +50,10 @@ namespace Analyzer.Profiling
                             return n;
                         }
 
+                        // todo material.mainTexture is a non trivial lookup 
                         var name = layerSubMesh.material?.mainTexture?.name ?? layerSubMesh.GetType().Name;
 
-                        var prof = ProfileController.Start(name, Namer, __originalMethod.GetType(), null, null, __originalMethod);
+                        var prof = ProfileController.Start(name, Namer, __originalMethod.GetType(), __originalMethod);
                         Graphics.Internal_DrawMesh_Injected(layerSubMesh.mesh, 0, ref johnmatrix, layerSubMesh.material, 0, null, null, ShadowCastingMode.Off, false, null, LightProbeUsage.Off, null);
 
                         // Graphics.DrawMesh(layerSubMesh.mesh, Vector3.zeroVector, Quaternion.identityQuaternion, layerSubMesh.material, 0);
@@ -88,7 +89,7 @@ namespace Analyzer.Profiling
 
                         var name = layerSubMesh.material?.mainTexture?.name ?? layerSubMesh.GetType().Name;
 
-                        var prof = ProfileController.Start(name, Namer, __originalMethod.GetType(), null, null,
+                        var prof = ProfileController.Start(name, Namer, __originalMethod.GetType(),
                             __originalMethod);
                         Graphics.DrawMesh(layerSubMesh.mesh, Vector3.zero, Quaternion.identity, layerSubMesh.material,
                             0);

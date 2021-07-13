@@ -16,8 +16,6 @@ namespace Analyzer.Profiling
 
         private readonly Watch stopwatch;
         public Type type;
-        public Def def;
-        public Thing thing;
         public MethodBase meth;
 
         public string label;
@@ -30,11 +28,9 @@ namespace Analyzer.Profiling
         public readonly int[] hits;
         public uint currentIndex = 0; // ring buffer tracking
 
-        public Profiler(string key, string label, Type type, Def def, Thing thing, MethodBase meth)
+        public Profiler(string key, string label, Type type, MethodBase meth)
         {
             this.key = key;
-            this.thing = thing;
-            this.def = def;
             this.meth = meth;
             this.label = label;
             this.stopwatch = new Watch();
@@ -76,10 +72,10 @@ namespace Analyzer.Profiling
         public void CollectStatistics(int entries, out double average, out double max, out double total, out float calls, out float maxCalls)
         {
             total = 0;
-            average = 0;
             calls = 0;
             maxCalls = hits[currentIndex];
             max = times[currentIndex];
+
             // we traverse backwards through the array, so when we reach -1
             // we wrap around back to the end
             uint arrayIndex = currentIndex;

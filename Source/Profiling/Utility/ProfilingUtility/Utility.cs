@@ -215,7 +215,7 @@ namespace Analyzer.Profiling
         private static void ReportException(Exception e, string message)
         {
 #if DEBUG
-            ThreadSafeLogger.ReportException($"[Analyzer] Patching error: {message}");
+            ThreadSafeLogger.ReportException(e, $"[Analyzer] Patching error: {message}");
 #endif
 #if NDEBUG
             if (!displayMessages) return;
@@ -335,7 +335,7 @@ namespace Analyzer.Profiling
         {
             foreach (MethodBase methodBase in Harmony.GetAllPatchedMethods())
             {
-                Patches infos = Harmony.GetPatchInfo(methodBase);
+                HarmonyLib.Patches infos = Harmony.GetPatchInfo(methodBase);
 
                 var allPatches = infos.Prefixes.Concat(infos.Postfixes, infos.Transpilers, infos.Finalizers);
 
