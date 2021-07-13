@@ -15,16 +15,17 @@ namespace Analyzer
 
         public static Settings Settings;
         private static Harmony harmony = null;
-        public static Harmony Harmony => harmony ??= new Harmony("Dubwise.DubsProfiler");
         private static Harmony staticHarmony = null;
-        public static Harmony StaticHarmony => staticHarmony ??= new Harmony("Dubwise.PerformanceAnalyzer");
+        public static Harmony Harmony => harmony;
+
+        public static Harmony StaticHarmony => staticHarmony;
 
         // Major - Reworked functionality
         // Minor - New feature
         // Build - Change Existing Feature
         // Revision - Hotfix
 
-        private static readonly Version analyzerVersion = new Version(1, 4, 0, 0);
+        private static readonly Version analyzerVersion = new Version(1, 4, 0, 1);
 
         public static bool isPatched = false;
 
@@ -34,16 +35,15 @@ namespace Analyzer
             {
                 Settings = GetSettings<Settings>();
 
-                ThreadSafeLogger.Message(
-                    $"[Analyzer] Loaded version {analyzerVersion.Major}.{analyzerVersion.Minor}.{analyzerVersion.Build} rev {analyzerVersion.Revision}");
+                ThreadSafeLogger.Message($"[Analyzer] Loaded version {analyzerVersion.Major}.{analyzerVersion.Minor}.{analyzerVersion.Build} rev {analyzerVersion.Revision}");
 
-                _ = StaticHarmony;
-                _ = Harmony;
+                staticHarmony = new Harmony("Dubwise.PerformanceAnalyzer");
+                harmony = new Harmony("Dubwise.DubsProfiler");;
                 
                 // For registering harmony patches
                 StaticHarmony.Patch(AccessTools.Constructor(typeof(Harmony), new[] {typeof(string)}),
                     new HarmonyMethod(typeof(RememberHarmonyIDs), nameof(RememberHarmonyIDs.Prefix)));
-                
+
 
                 {
                     // Profiling
