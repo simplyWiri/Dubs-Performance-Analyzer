@@ -84,8 +84,10 @@ namespace Analyzer.Profiling
     {
         public static Dictionary<string, StackTraceInformation> traces = new Dictionary<string, StackTraceInformation>();
         internal static Dictionary<MethodBase, string> cachedStrings = new Dictionary<MethodBase, string>();
+        internal static Dictionary<string, Assembly> harmonyIds = new Dictionary<string, Assembly>();
         internal static readonly Dictionary<Assembly, string> mods = new Dictionary<Assembly, string>();
-        internal static readonly Dictionary<string, Assembly> harmonyIds = new Dictionary<string, Assembly>();
+
+        private static FieldInfo visualExceptionsHarmonyIds = null;
 
         public static void Initialise()
         {
@@ -128,9 +130,20 @@ namespace Analyzer.Profiling
         }
         public static string ModFromPatchId(string pid)
         {
-            if (harmonyIds.TryGetValue(pid, out var asm) && mods.TryGetValue(asm, out var modName)) 
-                return modName;
+            if (Modbase.visualExceptionIntegration)
+            {
+                visualExceptionsHarmonyIds ??= AccessTools.Field(AccessTools.TypeByName("VisualExceptions.Mods"), "ActiveHarmonyIDs");
+
+                if (visualExceptionsHarmonyIds.GetValue(null) is Dictionary<Assembly, string> dict && harmonyIds.Count != dict.Count)
+                {
+                    harmonyIds.Clear();
+                    harmonyIds = dict.ToDictionary(pair => pair.Value, pair => pair.Key);
+                }
+            }
             
+            if (harmonyIds.TryGetValue(pid, out var asm) && mods.TryGetValue(asm, out var modName))
+                return modName;
+
             return pid;
         }
         

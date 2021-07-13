@@ -28,6 +28,7 @@ namespace Analyzer
         private static readonly Version analyzerVersion = new Version(1, 4, 0, 1);
 
         public static bool isPatched = false;
+        public static bool visualExceptionIntegration = false;
 
         public Modbase(ModContentPack content) : base(content)
         {
@@ -39,11 +40,26 @@ namespace Analyzer
 
                 staticHarmony = new Harmony("Dubwise.PerformanceAnalyzer");
                 harmony = new Harmony("Dubwise.DubsProfiler");;
-                
-                // For registering harmony patches
-                StaticHarmony.Patch(AccessTools.Constructor(typeof(Harmony), new[] {typeof(string)}),
-                    new HarmonyMethod(typeof(RememberHarmonyIDs), nameof(RememberHarmonyIDs.Prefix)));
 
+                if (ModLister.HasActiveModWithName("Visual Exceptions"))
+                {
+                    var type = AccessTools.TypeByName("VisualExceptions.ExceptionState");
+                    var field = AccessTools.Field(type, "configuration");
+                    type = AccessTools.TypeByName("VisualExceptions.Configuration");
+                    var property = AccessTools.PropertyGetter(type, "Debugging");
+
+                    visualExceptionIntegration = (bool) property.Invoke(field.GetValue(null), null);
+
+                    var str = "Detected Visual Exceptions - " + (visualExceptionIntegration ? "Integrating" : "Is disabled, relying on inbuilt functionality");
+                    ThreadSafeLogger.Message(str);
+                }
+                
+                if(visualExceptionIntegration is false)
+                {
+                    // For registering harmony patches
+                    StaticHarmony.Patch(AccessTools.Constructor(typeof(Harmony), new[] {typeof(string)}),
+                        new HarmonyMethod(typeof(RememberHarmonyIDs), nameof(RememberHarmonyIDs.Prefix)));
+                }
 
                 {
                     // Profiling
