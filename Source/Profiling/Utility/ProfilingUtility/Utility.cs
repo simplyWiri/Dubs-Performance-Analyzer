@@ -160,7 +160,6 @@ namespace Analyzer.Profiling
                 }
 
                 // This finds things like "String[]" as well as just String, which is why its not in the switch
-                // Todo: Hash table?
                 if (type.Name.Contains("String")) return ReplaceOccurence("String", "string");
                 if (type.Name.Contains("Int32")) return ReplaceOccurence("Int32", "int");
                 if (type.Name.Contains("Object")) return ReplaceOccurence("Object", "object");
@@ -473,36 +472,42 @@ namespace Analyzer.Profiling
         {
             var meths = new HashSet<MethodInfo>();
 
-            foreach (var assembly in assemblies)
+            foreach (var asm in assemblies)
             {
                 try
                 {
-                    if (patchedAssemblies.Contains(assembly.FullName))
+                    var asmName = $"{asm.GetName().Name}.dll";
+                    if (patchedAssemblies.Contains(asm.FullName))
                     {
-                        Warn($"patching {assembly.FullName} failed, already patched");
-                        return;
+                        Warn($"patching {asmName} failed, already patched");
+                        continue;
                     }
 
-                    patchedAssemblies.Add(assembly.FullName);
-
-                    foreach (var type in assembly.GetTypes())
+                    patchedAssemblies.Add(asm.FullName);
+                    
+                    foreach (var type in AccessTools.GetTypesFromAssembly(asm))
                     {
-                        foreach (var method in AccessTools.GetDeclaredMethods(type).Where(m => ValidMethod(m) && m.DeclaringType == type))
+                        var methods = AccessTools.GetDeclaredMethods(type).ToList();
+                        foreach (var m in methods)
                         {
-                            if(!meths.Contains(method))
-                                meths.Add(method);
+                            try
+                            {
+                                if (ValidMethod(m) && m.DeclaringType == type)
+                                    meths.TryAdd(m);
+                            }
+                            catch (Exception e)
+                            {
+                                ReportException(e, $"Skipping method {GetSignature(m)}");
+                            }
                         }
                     }
-
-                    Notify($"Patched {assembly.FullName}");
                 }
                 catch (Exception e)
                 {
-                    ReportException(e, $"Failed to patch the assembly {assembly.FullName}");
-                    return;
+                    ReportException(e, $"Failed to patch the assembly {asm.FullName}");
                 }
             }
-
+            
             MethodTransplanting.UpdateMethods(GUIController.types[key], meths);
         }
     }

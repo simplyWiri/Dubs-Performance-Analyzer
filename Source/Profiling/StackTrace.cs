@@ -201,27 +201,32 @@ namespace Analyzer.Profiling
             for (int i = 0; i < st.FrameCount; i++)
             {
                 var method = Harmony.GetMethodFromStackframe(st.GetFrame(i));
-                
+
                 if (method is MethodInfo replacement)
                 {
                     var original = Harmony.GetOriginalMethod(replacement);
-                    if (original != null) 
+                    if (original != null)
                         method = original;
                 }
-                
+
                 GetStringForMethod(ref stringBuilder, method);
-                
-                var p = Harmony.GetPatchInfo(method);
 
-                if (p != null && p.Owners.Count != 0)
+                if (method != null)
                 {
-                    var pString = GetPatchStrings(method, p);
-                    
-                    if (pString != null)
-                        stringBuilder.Append(pString);
-                }
+                    var p = Harmony.GetPatchInfo(method);
 
-                methods.Add(new MethodMeta(method, p));
+                    if (p != null && p.Owners.Count != 0)
+                    {
+                        var pString = GetPatchStrings(method, p);
+
+                        if (pString != null)
+                            stringBuilder.Append(pString);
+                    }
+
+                    methods.Add(new MethodMeta(method, p));
+                }
+                else
+                    methods.Add(null);
                 
                 stringBuilder.Append("\n");
             }

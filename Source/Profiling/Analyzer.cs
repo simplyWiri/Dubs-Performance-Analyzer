@@ -19,7 +19,6 @@ namespace Analyzer.Profiling
         private static int currentLogCount = 0; // How many update cycles have passed since beginning profiling an entry?
         public static List<ProfileLog> logs = new List<ProfileLog>();
 
-        // todo, how can I do this more elegantly?
         private static Comparer<ProfileLog> maxComparer = Comparer<ProfileLog>.Create((first, second) => first.max < second.max ? 1 : -1);
         private static Comparer<ProfileLog> averageComparer = Comparer<ProfileLog>.Create((first, second) => first.average < second.average ? 1 : -1);
         private static Comparer<ProfileLog> percentComparer = Comparer<ProfileLog>.Create((first, second) => first.percent < second.percent ? 1 : -1);

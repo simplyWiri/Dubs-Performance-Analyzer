@@ -65,6 +65,13 @@ namespace Analyzer.Profiling
 
             return retRect;
         }
+
+        public static void TryAdd<T>(this HashSet<T> hs, T elem)
+        {
+            if (hs.Contains(elem)) return;
+            
+            hs.Add(elem);
+        }
     }
 
 }
