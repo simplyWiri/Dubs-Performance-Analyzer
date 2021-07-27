@@ -136,6 +136,9 @@
 	<entry.tick.room>Rooms</entry.tick.room>
 	<entry.tick.room.tooltip>The method which is responsible for the updating of room stats</entry.tick.room.tooltip>
 
+	<entry.tick.storyteller>Storyteller and Incidents</entry.tick.storyteller>
+	<entry.tick.storyteller.tooltip>A variety of methods relating to both incident and quest generation</entry.tick.storyteller.tooltip>
+
 	<entry.tick.thinknodes>ThinkNodes</entry.tick.thinknodes>
 	<entry.tick.thinknodes.tooltip>ThinkNodes are basically sets of general job givers filtered in an ai tree, like satisfying needs, optimizing apparel, fleeing, work is all combined in a single JobGiver_Work which can be individually profiled by looking at the Work Giver profiler tab</entry.tick.thinknodes.tooltip>
 

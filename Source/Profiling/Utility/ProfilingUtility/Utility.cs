@@ -290,10 +290,16 @@ namespace Analyzer.Profiling
         }
 
 
-        public static IEnumerable<MethodInfo> GetTypeMethods(Type type)
+        public static IEnumerable<MethodInfo> GetTypeMethods(Type type, bool nestedClasses = false)
         {
             foreach (var method in AccessTools.GetDeclaredMethods(type).Where(ValidMethod))
                 yield return method;
+
+            if (!nestedClasses) yield break;
+            
+            foreach(var t in type.GetNestedTypes(AccessTools.all))
+                foreach (var m in GetTypeMethods(t, true))
+                    yield return m;
         }
 
         public static IEnumerable<MethodInfo> SubClassImplementationsOf(Type baseType, Func<MethodInfo, bool> predicate)
@@ -437,7 +443,24 @@ namespace Analyzer.Profiling
                 InternalMethodUtility.PatchedInternals.Remove(method);
             }
         }
+        
+        public static IEnumerable<Type> AllSubclassesAndBase(this Type t)
+        {
+            foreach (var type in t.AllSubclasses())
+                yield return type;
 
+            yield return t;
+        }
+        
+        public static IEnumerable<MethodInfo> AllSubnBaseImplsOf(this Type t, Func<Type, MethodInfo> getMethod)
+        {
+            foreach (var type in t.AllSubclassesAndBase())
+            {
+                var method = getMethod(type);
+                if (method.DeclaringType == type && method.HasMethodBody()) yield return method;
+            }
+        }
+        
         private static bool ValidAssembly(Assembly assembly)
         {
             if (assembly.FullName.Contains("0Harmony")) return false;
