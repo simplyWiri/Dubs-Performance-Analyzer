@@ -372,6 +372,8 @@ namespace Analyzer.Profiling
             }
             catch (Exception e)
             {
+                Messages.Message($"Failed to find the method(s) represented by {name}", MessageTypeDefOf.CautionInput, false);
+
                 ReportException(e, $"Failed to locate the method {name}");
                 return;
             }
@@ -383,7 +385,9 @@ namespace Analyzer.Profiling
         {
             if (InternalMethodUtility.PatchedInternals.Contains(method))
             {
-                Warn($"Trying to re-transpile an already profiled internal method - {Utility.GetSignature(method, false)}");
+                var ms = GetSignature(method, true);
+                Messages.Message($"Have already patched the method {ms}", MessageTypeDefOf.CautionInput, false);
+                Warn($"Trying to re-transpile an already profiled internal method - {ms}");
                 return;
             }
 
@@ -507,7 +511,11 @@ namespace Analyzer.Profiling
                     ReportException(e, $"Failed to patch the assembly {asm.FullName}");
                 }
             }
-            
+
+            var asms = assemblies.Select(a => a.GetName().Name + ".dll").Join();
+            var asmString = assemblies.Count > 1 ? "assemblies" : "assembly";
+            Messages.Message($"Attempting to patch {meths.Count} methods from the {asmString} [{asms}]", MessageTypeDefOf.CautionInput, false);
+
             MethodTransplanting.UpdateMethods(GUIController.types[key], meths);
         }
     }
