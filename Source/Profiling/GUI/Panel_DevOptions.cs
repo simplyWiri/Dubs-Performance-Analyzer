@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 	using System.Reflection;
 	using HarmonyLib;
-
-using UnityEngine;
+	using RimWorld;
+	using UnityEngine;
 
 using Verse;
 
@@ -257,34 +257,39 @@ namespace Analyzer.Profiling
 			{
 
 				var entry = cat == Category.Tick ? typeof(CustomProfilersTick) : typeof(CustomProfilersUpdate);
-				IEnumerable<MethodInfo> methods = null;
-
-				switch (mode)
+				List<MethodInfo> methods = null;
+				
+				var temp = mode switch
 				{
-					case CurrentInput.Method:
-						methods = Utility.GetMethods(strinput);
-						break;
-					case CurrentInput.Type:
-						methods = Utility.GetTypeMethods(AccessTools.TypeByName(strinput));
-						break;
-					case CurrentInput.MethodHarmony:
-						methods = Utility.GetMethodsPatching(strinput);
-						break;
-					case CurrentInput.SubClasses:
-						methods = Utility.SubClassImplementationsOf(AccessTools.TypeByName(strinput), m => true);
-						break;
-					case CurrentInput.TypeHarmony:
-						methods = Utility.GetMethodsPatchingType(AccessTools.TypeByName(strinput));
-						break;
-					case CurrentInput.InternalMethod:
-						Utility.PatchInternalMethod(strinput, cat);
-						return;
-					case CurrentInput.Assembly:
-						Utility.PatchAssembly(strinput, cat);
-						return;
-				}
+					CurrentInput.Method => Utility.GetMethods(strinput),
+					CurrentInput.Type => Utility.GetTypeMethods(AccessTools.TypeByName(strinput)),
+					CurrentInput.MethodHarmony => Utility.GetMethodsPatching(strinput),
+					CurrentInput.SubClasses => Utility.SubClassImplementationsOf(AccessTools.TypeByName(strinput), m => true),
+					CurrentInput.TypeHarmony => Utility.GetMethodsPatchingType(AccessTools.TypeByName(strinput)),
+					_ => null,
+				};
 
-				MethodTransplanting.UpdateMethods(entry, methods);
+				if (temp is null)
+				{
+					if(mode == CurrentInput.InternalMethod)
+						Utility.PatchInternalMethod(strinput, cat);
+					else
+						Utility.PatchAssembly(strinput, cat);
+
+					return;
+				}
+				
+				methods = temp.ToList();
+
+				if (methods.Count == 0)
+				{
+					Messages.Message($"Failed to find the method(s) represented by {strinput}", MessageTypeDefOf.CautionInput, false);
+					return;
+				}
+				
+				Messages.Message(methods.Count != 1 ? $"Patching {methods.Count} methods in the category {cat}" : $"Patching {Utility.GetSignature(methods[0])} in the category {cat}", MessageTypeDefOf.CautionInput, false);
+				
+				MethodTransplanting.UpdateMethods(entry, methods.ToList());
 				GUIController.Tab(cat).collapsed = false;
 
 				var entryName = (cat == Category.Tick) ? "Custom Tick" : "Custom Update";

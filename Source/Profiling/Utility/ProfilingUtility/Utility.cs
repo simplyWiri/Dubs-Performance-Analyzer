@@ -160,7 +160,6 @@ namespace Analyzer.Profiling
                 }
 
                 // This finds things like "String[]" as well as just String, which is why its not in the switch
-                // Todo: Hash table?
                 if (type.Name.Contains("String")) return ReplaceOccurence("String", "string");
                 if (type.Name.Contains("Int32")) return ReplaceOccurence("Int32", "int");
                 if (type.Name.Contains("Object")) return ReplaceOccurence("Object", "object");
@@ -215,7 +214,7 @@ namespace Analyzer.Profiling
         private static void ReportException(Exception e, string message)
         {
 #if DEBUG
-            ThreadSafeLogger.ReportException($"[Analyzer] Patching error: {message}");
+            ThreadSafeLogger.ReportException(e, $"[Analyzer] Patching error: {message}");
 #endif
 #if NDEBUG
             if (!displayMessages) return;
@@ -291,10 +290,16 @@ namespace Analyzer.Profiling
         }
 
 
-        public static IEnumerable<MethodInfo> GetTypeMethods(Type type)
+        public static IEnumerable<MethodInfo> GetTypeMethods(Type type, bool nestedClasses = false)
         {
             foreach (var method in AccessTools.GetDeclaredMethods(type).Where(ValidMethod))
                 yield return method;
+
+            if (!nestedClasses) yield break;
+            
+            foreach(var t in type.GetNestedTypes(AccessTools.all))
+                foreach (var m in GetTypeMethods(t, true))
+                    yield return m;
         }
 
         public static IEnumerable<MethodInfo> SubClassImplementationsOf(Type baseType, Func<MethodInfo, bool> predicate)
@@ -335,7 +340,7 @@ namespace Analyzer.Profiling
         {
             foreach (MethodBase methodBase in Harmony.GetAllPatchedMethods())
             {
-                Patches infos = Harmony.GetPatchInfo(methodBase);
+                HarmonyLib.Patches infos = Harmony.GetPatchInfo(methodBase);
 
                 var allPatches = infos.Prefixes.Concat(infos.Postfixes, infos.Transpilers, infos.Finalizers);
 
@@ -373,6 +378,8 @@ namespace Analyzer.Profiling
             }
             catch (Exception e)
             {
+                Messages.Message($"Failed to find the method(s) represented by {name}", MessageTypeDefOf.CautionInput, false);
+
                 ReportException(e, $"Failed to locate the method {name}");
                 return;
             }
@@ -384,7 +391,9 @@ namespace Analyzer.Profiling
         {
             if (InternalMethodUtility.PatchedInternals.Contains(method))
             {
-                Warn($"Trying to re-transpile an already profiled internal method - {Utility.GetSignature(method, false)}");
+                var ms = GetSignature(method, true);
+                Messages.Message($"Have already patched the method {ms}", MessageTypeDefOf.CautionInput, false);
+                Warn($"Trying to re-transpile an already profiled internal method - {ms}");
                 return;
             }
 
@@ -434,7 +443,24 @@ namespace Analyzer.Profiling
                 InternalMethodUtility.PatchedInternals.Remove(method);
             }
         }
+        
+        public static IEnumerable<Type> AllSubclassesAndBase(this Type t)
+        {
+            foreach (var type in t.AllSubclasses())
+                yield return type;
 
+            yield return t;
+        }
+        
+        public static IEnumerable<MethodInfo> AllSubnBaseImplsOf(this Type t, Func<Type, MethodInfo> getMethod)
+        {
+            foreach (var type in t.AllSubclassesAndBase())
+            {
+                var method = getMethod(type);
+                if (method.DeclaringType == type && method.HasMethodBody()) yield return method;
+            }
+        }
+        
         private static bool ValidAssembly(Assembly assembly)
         {
             if (assembly.FullName.Contains("0Harmony")) return false;
@@ -473,35 +499,45 @@ namespace Analyzer.Profiling
         {
             var meths = new HashSet<MethodInfo>();
 
-            foreach (var assembly in assemblies)
+            foreach (var asm in assemblies)
             {
                 try
                 {
-                    if (patchedAssemblies.Contains(assembly.FullName))
+                    var asmName = $"{asm.GetName().Name}.dll";
+                    if (patchedAssemblies.Contains(asm.FullName))
                     {
-                        Warn($"patching {assembly.FullName} failed, already patched");
-                        return;
+                        Warn($"patching {asmName} failed, already patched");
+                        continue;
                     }
 
-                    patchedAssemblies.Add(assembly.FullName);
-
-                    foreach (var type in assembly.GetTypes())
+                    patchedAssemblies.Add(asm.FullName);
+                    
+                    foreach (var type in AccessTools.GetTypesFromAssembly(asm))
                     {
-                        foreach (var method in AccessTools.GetDeclaredMethods(type).Where(m => ValidMethod(m) && m.DeclaringType == type))
+                        var methods = AccessTools.GetDeclaredMethods(type).ToList();
+                        foreach (var m in methods)
                         {
-                            if(!meths.Contains(method))
-                                meths.Add(method);
+                            try
+                            {
+                                if (ValidMethod(m) && m.DeclaringType == type)
+                                    meths.TryAdd(m);
+                            }
+                            catch (Exception e)
+                            {
+                                ReportException(e, $"Skipping method {GetSignature(m)}");
+                            }
                         }
                     }
-
-                    Notify($"Patched {assembly.FullName}");
                 }
                 catch (Exception e)
                 {
-                    ReportException(e, $"Failed to patch the assembly {assembly.FullName}");
-                    return;
+                    ReportException(e, $"Failed to patch the assembly {asm.FullName}");
                 }
             }
+
+            var asms = assemblies.Select(a => a.GetName().Name + ".dll").Join();
+            var asmString = assemblies.Count > 1 ? "assemblies" : "assembly";
+            Messages.Message($"Attempting to patch {meths.Count} methods from the {asmString} [{asms}]", MessageTypeDefOf.CautionInput, false);
 
             MethodTransplanting.UpdateMethods(GUIController.types[key], meths);
         }

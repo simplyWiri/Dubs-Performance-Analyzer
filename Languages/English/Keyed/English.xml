@@ -59,17 +59,21 @@
 	<logs.max>Max</logs.max>
 	<logs.av>Average</logs.av>
 	<logs.percent>Percent</logs.percent>
-	<logs.total>Total</logs.total>
+	<logs.avpc>Av Per Call</logs.avpc>
 	<logs.calls>Calls</logs.calls>
 	<logs.name>Name</logs.name>
+	<logs.total>Total</logs.total>
+	<logs.callspu>Av Calls Per Update</logs.callspu>
+
 
 	<logs.max.desc>Sort the rows by the maximum (MS) peak the method has reached</logs.max.desc>
 	<logs.av.desc>Sort the rows by the average (MS) the method is reaching</logs.av.desc>
 	<logs.percent.desc>Sort the rows by relative percent in the category</logs.percent.desc>
-	<logs.total.desc>Sort the rows by total (MS) impact</logs.total.desc>
+	<logs.avpc.desc>Sort the rows by the average per call (MS)</logs.avpc.desc>
 	<logs.calls.desc>Sort the rows by total amount of calls</logs.calls.desc>
 	<logs.name.desc>Sort the rows in alphabetical order</logs.name.desc>
-
+	<logs.total.desc>Sort the rows by total (MS) impact</logs.total.desc>
+	<logs.callspu.desc>Sort the rows by average calls per update</logs.callspu.desc>
 	<!-- Entry -->
 
 	<!-- GUI -->
@@ -96,11 +100,14 @@
 	
 	<!-- Tick -->
 
-  	<entry.tick.jobdrivertick>Job driver tick</entry.tick.jobdrivertick>
-  	<entry.tick.jobdrivertick.tooltip>A detoured profiler for the whole job driver tick including the cost of ticking each individual driver</entry.tick.jobdrivertick.tooltip>
+  	<entry.tick.jobdriver>Job Drivers</entry.tick.jobdriver>
+  	<entry.tick.jobdriver.tooltip>A breakdown of what is occuring in each job as it is being executed by a pawn</entry.tick.jobdriver.tooltip>
 
   	<entry.tick.single>Single Tick</entry.tick.single>
 	<entry.tick.single.tooltip>A variety of tick methods, including; World, History, FilthMonitor, Storyteller</entry.tick.single.tooltip>
+
+  	<entry.tick.thingcomp>Thing Comps</entry.tick.thingcomp>
+	<entry.tick.thingcomp.tooltip>Thing comps, these can be added to any ThingWithComp, this collects them all into one category</entry.tick.thingcomp.tooltip>
 
 	<entry.tick.pathfinder>Pathfinding</entry.tick.pathfinder>
 	<entry.tick.pathfinder.tooltip>Shows a variety of methods which are used in pathfinding</entry.tick.pathfinder.tooltip>
@@ -129,17 +136,20 @@
 	<entry.tick.room>Rooms</entry.tick.room>
 	<entry.tick.room.tooltip>The method which is responsible for the updating of room stats</entry.tick.room.tooltip>
 
+	<entry.tick.storyteller>Storyteller and Incidents</entry.tick.storyteller>
+	<entry.tick.storyteller.tooltip>A variety of methods relating to both incident and quest generation</entry.tick.storyteller.tooltip>
+
 	<entry.tick.thinknodes>ThinkNodes</entry.tick.thinknodes>
 	<entry.tick.thinknodes.tooltip>ThinkNodes are basically sets of general job givers filtered in an ai tree, like satisfying needs, optimizing apparel, fleeing, work is all combined in a single JobGiver_Work which can be individually profiled by looking at the Work Giver profiler tab</entry.tick.thinknodes.tooltip>
 
 	<entry.tick.things>Tick Things</entry.tick.things>
 	<entry.tick.things.tooltip>Profiles the ticking methods of various things on the map</entry.tick.things.tooltip>
 
-	<entry.tick.jobgiver>Work Giver</entry.tick.jobgiver>
-	<entry.tick.jobgiver.tooltip>Work Giver is only jobs done for work, that means all the jobs listed in the Work tab, this does not include jobs run by the ai for things like satisfying needs or optimizing apparel, those can be found in the ThinkNodes profile tab</entry.tick.jobgiver.tooltip>
+	<entry.tick.jobgiver>Job Giver</entry.tick.jobgiver>
+	<entry.tick.jobgiver.tooltip>All jobs which are manually looked for in the pawns thinktree, this includes work like satisfying needs, fleeing from danger, improving worn apparel etc</entry.tick.jobgiver.tooltip>
 
-	<entry.tick.jobgiverd>Job Giver (Detoured)</entry.tick.jobgiverd>
-	<entry.tick.jobgiverd.tooltip>Job Giver shows jobs which pro-actively seek out work to be done. For example. Fermenting barrels looking for ingredients, bills looking for resources, etc</entry.tick.jobgiverd.tooltip>
+	<entry.tick.workgiver>Work Giver</entry.tick.workgiver>
+	<entry.tick.workgiver.tooltip>Work Giver is only jobs done for work, that means all the jobs listed in the Work tab, this does not include jobs run by the ai for things like satisfying needs or optimizing apparel, those can be found in the ThinkNodes profile tab</entry.tick.workgiver.tooltip>
 
 	<entry.tick.world>World Tick</entry.tick.world>
 	<entry.tick.world.tooltip>Tick methods for various world entries, such as; WorldPawns, Factions, Caravans</entry.tick.world.tooltip>
@@ -193,6 +203,9 @@
 
 	<entry.update.uiroot>UI Root Update</entry.update.uiroot>
 	<entry.update.uiroot.tooltip>A variety of update methods for GUI-related functionality, such as; AlertsReadout, Messages, Tutor</entry.update.uiroot.tooltip>
+
+	<entry.update.thoughtworker>Thought Workers</entry.update.thoughtworker>
+	<entry.update.thoughtworker.tooltip>Thought Workers, these drive the updates of pawns thoughts</entry.update.thoughtworker.tooltip>
 
 	<entry.update.frametimes>Frame times</entry.update.frametimes>
 	<entry.update.frametimes.tooltip>Shows entries which correlate to the frame times of your game (how long does each frame take to complete)</entry.update.frametimes.tooltip>

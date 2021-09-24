@@ -62,7 +62,7 @@ namespace Analyzer.Profiling
 
             if (!doSettings)
             {
-                if (Widgets.ButtonImageFitted(c, Textures.Menu))
+                if (Widgets.ButtonImageFitted(c, Textures.Gear))
                 {
                     doSettings = !doSettings;
                 }
@@ -164,7 +164,7 @@ namespace Analyzer.Profiling
 
             Text.Anchor = TextAnchor.MiddleCenter;
 
-            if (Widgets.ButtonImageFitted(box, Textures.Menu))
+            if (Widgets.ButtonImageFitted(box, Textures.Gear))
             {
                 doSettings = !doSettings;
             }

@@ -35,7 +35,7 @@ namespace Analyzer
 
             TabDrawer.DrawTabs(rect, list);
 
-                rect = rect.ContractedBy(10);
+            rect = rect.ContractedBy(10);
 
             listing.maxOneColumn = true;
             var innyrek = new Rect(0, 0, rect.width - 16f, listheight);
@@ -55,7 +55,7 @@ namespace Analyzer
             if (Widgets.ButtonText(lrec.LeftPartPixels(Strings.settings_wiki.GetWidthCached()),
                 Strings.settings_wiki, false))
             {
-                Application.OpenURL("https://github.com/Dubwise56/Dubs-Performance-Analyzer/wiki");
+                Application.OpenURL("https://github.com/simplyWiri/Dubs-Performance-Analyzer/blob/master/README.md");
             }
 
             Widgets.DrawTextureFitted(rec.RightPartPixels(40f), Textures.disco, 1f);

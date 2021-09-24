@@ -26,14 +26,13 @@ namespace Analyzer.Profiling
 
             Modbase.Harmony.Patch(jiff, pre, post);
 
-            jiff = AccessTools.Method(typeof(StatExtension), nameof(StatExtension.GetStatValueAbstract), new[] { typeof(AbilityDef), typeof(StatDef) });
+            jiff = AccessTools.Method(typeof(StatExtension), nameof(StatExtension.GetStatValueAbstract), new[] { typeof(AbilityDef), typeof(StatDef), typeof(Pawn) });
             pre = new HarmonyMethod(typeof(H_GetStatValue), nameof(PrefixAbility));
             Modbase.Harmony.Patch(jiff, pre, post);
 
             jiff = AccessTools.Method(typeof(StatWorker), nameof(StatWorker.GetValue), new[] { typeof(StatRequest), typeof(bool) });
             pre = new HarmonyMethod(typeof(H_GetStatValue), nameof(GetValueDetour));
             Modbase.Harmony.Patch(jiff, pre);
-
 
             HarmonyMethod go = new HarmonyMethod(typeof(H_GetStatValue), nameof(PartPrefix));
             HarmonyMethod biff = new HarmonyMethod(typeof(H_GetStatValue), nameof(PartPostfix));
@@ -45,7 +44,7 @@ namespace Analyzer.Profiling
                     MethodInfo mef = AccessTools.Method(allLeafSubclass, nameof(StatPart.TransformValue), new Type[] { typeof(StatRequest), typeof(float).MakeByRefType() });
                     if (mef.DeclaringType == allLeafSubclass)
                     {
-                        Patches info = Harmony.GetPatchInfo(mef);
+                        HarmonyLib.Patches info = Harmony.GetPatchInfo(mef);
                         bool F = true;
                         if (info != null)
                         {
@@ -87,7 +86,7 @@ namespace Analyzer.Profiling
                     state = __originalMethod.GetType().ToString();
                 }
 
-                __state = ProfileController.Start(state, null, null, null, null, __originalMethod);
+                __state = ProfileController.Start(state, null, null, __originalMethod);
             }
         }
 
@@ -127,7 +126,7 @@ namespace Analyzer.Profiling
                     slag = $"{__instance.stat.defName} GetValueUnfinalized";
                 }
 
-                Profiler prof = ProfileController.Start(slag, null, null, null, null, __originalMethod);
+                Profiler prof = ProfileController.Start(slag, null, null, __originalMethod);
                 float valueUnfinalized = sw.GetValueUnfinalized(req, applyPostProcess);
                 prof.Stop();
 
@@ -140,7 +139,7 @@ namespace Analyzer.Profiling
                     slag = $"{__instance.stat.defName} FinalizeValue";
                 }
 
-                prof = ProfileController.Start(slag, null, null, null, null, __originalMethod);
+                prof = ProfileController.Start(slag, null, null, __originalMethod);
                 sw.FinalizeValue(req, ref valueUnfinalized, applyPostProcess);
                 prof.Stop();
 
@@ -188,7 +187,7 @@ namespace Analyzer.Profiling
                     state = $"{stat.defName} abstract";
                 }
 
-                __state = ProfileController.Start(state, null, null, null, null, __originalMethod);
+                __state = ProfileController.Start(state, null, null, __originalMethod);
             }
         }
 
@@ -208,7 +207,7 @@ namespace Analyzer.Profiling
                     state = $"{stat.defName} abstract";
                 }
 
-                __state = ProfileController.Start(state, null, null, null, null, __originalMethod);
+                __state = ProfileController.Start(state, null, null, __originalMethod);
             }
         }
 

@@ -165,6 +165,7 @@ namespace Analyzer
 					GUIController.Tab(entry.category).entries.Add(entry, entry.type);
 			}
 
+			Panel_Logs.Initialise();
 		}
 
 		public void HandleWindowDrag(Rect rect)

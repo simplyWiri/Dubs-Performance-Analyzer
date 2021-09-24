@@ -7,36 +7,29 @@ namespace Analyzer.Profiling
 {
     public class ProfileLog
     {
+        public int entries;
         public float percent;
-        public string percentString;
         public double average;
         public string key;
         public string label;
-        public string mod;
         public float max;
         public float total;
         public float calls;
-        public float maxCalls;
         public Type type;
-        public Def def;
         public MethodBase meth;
         public bool pinned;
 
-        public ProfileLog(string label, string percentString, double average, float max, Def def, string key, string mod, float percent, float total, float calls, float maxCalls, Type type, MethodBase meth = null, bool pinned = false)
+        public ProfileLog(int entries, string label, double average, float max, string key, float total, float calls, float maxCalls, Type type, MethodBase meth = null, bool pinned = false)
         {
+            this.entries = entries;
             this.label = label;
-            this.percentString = percentString;
             this.average = average;
-            this.def = def;
             this.key = key;
             this.max = max;
-            this.mod = mod;
-            this.percent = percent;
             this.type = type;
             this.meth = meth;
             this.total = total;
             this.calls = calls;
-            this.maxCalls = maxCalls;
             this.pinned = pinned;
         }
     }

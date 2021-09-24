@@ -25,7 +25,7 @@ namespace Analyzer.Profiling
                     try
                     {
                         __state = $"ThinkNode_Priority SubNode [{__instance.subNodes[i].GetType()}]";
-                        prof = ProfileController.Start(__state, null, null, null, null, __originalMethod);
+                        prof = ProfileController.Start(__state, null, null, __originalMethod);
                         result = __instance.subNodes[i].TryIssueJobPackage(pawn, jobParams);
                         prof.Stop();
                     }
