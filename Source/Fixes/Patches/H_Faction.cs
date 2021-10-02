@@ -19,7 +19,7 @@ namespace Analyzer.Fixes
                 fac.def = FactionDef.Named("OutlanderCivil");
             }
 
-            foreach (var wo in g.World.worldObjects.worldObjects.Where(w => w.factionInt.def == null))
+            foreach (var wo in g.World.worldObjects.worldObjects.Where(w => w.factionInt?.def == null))
             {
                 var faction = factionManger.allFactions.Where(f => !f.IsPlayer && (!f.hidden ?? true)).RandomElement();
 
