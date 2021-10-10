@@ -59,6 +59,10 @@ namespace Analyzer
                     // For registering harmony patches
                     StaticHarmony.Patch(AccessTools.Constructor(typeof(Harmony), new[] {typeof(string)}),
                         new HarmonyMethod(typeof(RememberHarmonyIDs), nameof(RememberHarmonyIDs.Prefix)));
+                    
+                    if(ModLister.HasActiveModWithName("HugsLib"))
+                        StaticHarmony.Patch(AccessTools.Method("HugsLib.ModBase:ApplyHarmonyPatches"),
+                            transpiler: new HarmonyMethod(typeof(RememberHarmonyIDs), nameof(RememberHarmonyIDs.Transpiler)));
                 }
 
                 {

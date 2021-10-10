@@ -9,6 +9,7 @@ using System.Text;
 using HarmonyLib;
 using UnityEngine;
 using Verse;
+using Object = System.Object;
 
 namespace Analyzer.Profiling
 {
@@ -17,23 +18,61 @@ namespace Analyzer.Profiling
     {
         private static Assembly harmonyAssembly = typeof(Harmony).Assembly;
         private static Assembly dpaAssembly = typeof(Modbase).Assembly;
+        
         internal static void Prefix(string id)
         {
-            if (Utility.IsNotAnalyzerPatch(id) is false) return;
-            
-            // Can't be sure that the JIT won't inline the constructor of harmony
-            // so we need to manually trawl until we find a method which doesn't belong
-            // to either dpa or harmony. (this postfix, and the harmony ctor)
-            var frames = new StackTrace(false).GetFrames();
-            if (frames == null) return;
-            
-            var asm = frames
-                .Select(Harmony.GetMethodFromStackframe)
-                .Select(m => m.DeclaringType?.Assembly)
-                .First(a => a != null && a != harmonyAssembly && a != dpaAssembly);
-            
-            StackTraceUtility.RegisterHarmonyId(id, asm);
+            try
+            {
+                if (Utility.IsNotAnalyzerPatch(id) is false) return;
+
+                // Can't be sure that the JIT won't inline the constructor of harmony
+                // so we need to manually trawl until we find a method which doesn't belong
+                // to either dpa or harmony. (this prefix, and the harmony ctor)
+                var frames = new StackTrace(false).GetFrames();
+                if (frames == null) return;
+
+                var methods = frames
+                    .Select(Harmony.GetMethodFromStackframe);
+                
+                foreach (var method in methods)
+                {
+                    var asm = method.DeclaringType?.Assembly;
+                    if (asm == null) continue;
+                    if (asm == harmonyAssembly || asm == dpaAssembly) continue;
+                    
+                    // we snipe this in another way
+                    if (method.Name.Contains("ApplyHarmonyPatches")) return;
+                    
+                    StackTraceUtility.RegisterHarmonyId(id, asm);
+                    return;
+                }
+            }
+            catch (Exception e) // lets be exceedingly careful.
+            {
+                ThreadSafeLogger.ReportException(e, "Failed to capture Harmony ctor");
+            }
         }
+        
+        // patches Hugslib.ModBase:ApplyHarmonyPatches
+        internal static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            var harmonyMethod = AccessTools.Method("HarmonyLib.Harmony:PatchAll", new Type[]{ typeof(Assembly) } );
+            
+            foreach (var inst in instructions)
+            {
+                yield return inst;
+                if (inst.Calls(harmonyMethod))
+                {
+                    yield return new CodeInstruction(OpCodes.Ldloc_1);
+                    yield return new CodeInstruction(OpCodes.Ldarg_0);
+                    yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Object), nameof(Object.GetType)));
+                    yield return new CodeInstruction(OpCodes.Callvirt, AccessTools.Method(typeof(Type), "get_Assembly"));
+                    yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(StackTraceUtility), nameof(StackTraceUtility.RegisterHarmonyId)));
+                }
+            }
+        }
+        
+        
     }
     
     public class MethodMeta
@@ -131,7 +170,22 @@ namespace Analyzer.Profiling
 
         public static void RegisterHarmonyId(string harmonyid, Assembly assembly)
         {
-            harmonyIds.Add(harmonyid, assembly);
+            if (harmonyIds.TryGetValue(harmonyid, out var asm))
+            {
+                mods.TryGetValue(asm, out var asmMod);
+                mods.TryGetValue(asm, out var assemblyMod);
+
+                var blameString = asmMod == assemblyMod
+                    ? $"This is a configuration issue with {asmMod}. Please report that they are instantiating harmony twice."
+                    : $"This is a Harmony ID configuration issue with {asmMod} and {assemblyMod}. Please report that they are instantiating harmony with the same ID.";
+                    
+                
+                ThreadSafeLogger.Error($"The HarmonyID {harmonyid} has been loaded twice. It is associated with both: \n{asm.FullName} and {assembly.FullName}\n{blameString}");
+            }
+            else
+            {
+                harmonyIds.Add(harmonyid, assembly);
+            }
         }
         public static string ModFromPatchId(string pid)
         {
