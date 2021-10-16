@@ -541,5 +541,24 @@ namespace Analyzer.Profiling
 
             MethodTransplanting.UpdateMethods(GUIController.types[key], meths);
         }
+        
+        // We do *NOT* check for methods that are empty, or pure virtual, as they can still be dispatched and timed
+        // however we need do need to prevent them being internal patched.
+        public static bool ValidCallInstruction(CodeInstruction cur, CodeInstruction prev, out MethodBase methodBase, out string key)
+        {
+            methodBase = null;
+            key = null;
+
+            // needs to be Call || CallVirt
+            if ( !(cur.opcode == OpCodes.Call || cur.opcode == OpCodes.Callvirt)) return false;
+            // can not be constrained
+            if (prev != null && prev.opcode == OpCodes.Constrained) return false;
+
+            methodBase = cur.operand as MethodBase;
+            key = GetMethodKey(methodBase);
+
+            // Make sure it is not an analyzer profiling method
+            return !methodBase.DeclaringType.FullName.Contains("Analyzer.Profiling");
+        }
     }
 }

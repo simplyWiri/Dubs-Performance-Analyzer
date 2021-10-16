@@ -19,11 +19,13 @@ namespace Analyzer.Profiling
     public class Change<T>
     {
         public T value { get; private set; }
+        public int rIndex { get; private set; }
         public ChangeType change { get; private set; }
 
-        public Change(T value, ChangeType change)
+        public Change(T value, int idx, ChangeType change)
         {
             this.value = value;
+            this.rIndex = idx;
             this.change = change;
         }
 
@@ -176,17 +178,17 @@ namespace Analyzer.Profiling
 
                 if (cX != nX && cY != nY)
                 {
-                    changeSet.Add(new Change<T>(left[pX], ChangeType.Unmodified));
+                    changeSet.Add(new Change<T>(left[pX], -1, ChangeType.Unmodified));
                     pX++; pY++;
                 }
                 else if (cX != nX)
                 {
-                    changeSet.Add(new Change<T>(left[pX], ChangeType.Removed));
+                    changeSet.Add(new Change<T>(left[pX], -1, ChangeType.Removed));
                     pX++;
                 }
                 else if (cY != nY)
                 {
-                    changeSet.Add(new Change<T>(right[pY], ChangeType.Added));
+                    changeSet.Add(new Change<T>(right[pY], pY, ChangeType.Added));
                     pY++;
                 }
             }
