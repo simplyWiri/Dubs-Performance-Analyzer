@@ -51,8 +51,40 @@ namespace Analyzer.Profiling
             Task.Factory.StartNew(() => ExecuteWorker(this, lCalls, lTimes, logCount, currentIndex));
         }
 
-        private static void ExecuteWorker(LogStats logic, int[] LocalCalls, double[] LocalTimes, int currentLogCount,
-            uint currentIndex)
+        public static LogStats GatherStats(int[] calls, float[] times, int entries)
+        {
+            var stats = new LogStats();
+            
+            Array.Sort(calls);
+            Array.Sort(times);
+            
+            for (var i = 0; i < entries; i++)
+            {
+                stats.TotalCalls += calls[i];
+                stats.TotalTime += times[i];
+            }
+
+            // Mean
+            stats.MeanTimePerCall = stats.TotalTime / stats.TotalCalls;
+            stats.MeanTimePerUpdateCycle = stats.TotalTime / entries;
+            stats.MeanCallsPerUpdateCycle = stats.TotalCalls / (float) entries;
+
+            var middle = entries / 2;
+            // Medians
+            stats.MedianTime = times[middle];
+            stats.MedianCalls = calls[middle];
+
+            // Max
+            stats.HighestTime = times[Profiler.RECORDS_HELD - 1];
+            stats.HighestCalls = calls[Profiler.RECORDS_HELD - 1];
+
+            // general
+            stats.Entries = entries;
+
+            return stats;
+        }
+        
+        public static void ExecuteWorker(LogStats logic, int[] LocalCalls, double[] LocalTimes, int currentLogCount, uint currentIndex)
         {
             try
             {

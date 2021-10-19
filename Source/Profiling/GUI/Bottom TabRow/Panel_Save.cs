@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
+using RimWorld;
 using UnityEngine;
 using Verse;
 
@@ -11,13 +14,62 @@ namespace Analyzer.Profiling
     public class HotSwappableAttribute : Attribute
     {
     }
+
+    class Row
+    {
+        public string name;
+        public Func<LogStats, double> getDouble = null;
+        public Func<LogStats, int> getInt = null;
+        public bool shouldColour;
+        
+        public Row(string n, Func<LogStats, int> gi, bool sC = true)
+        {
+            name = n;
+            getInt = gi;
+            shouldColour = sC;
+        }
+
+        public Row(string n, Func<LogStats, double> gd, bool sC = true)
+        {
+            name = n;
+            getDouble = gd;
+            shouldColour = sC;
+        }
+
+        public bool IsInt() => getInt is not null;
+
+        public int Int(LogStats stats) => getInt(stats);
+        public double Double(LogStats stats) => getDouble(stats);
+
+    }
+    
+    
     
     [HotSwappable]
     public static class Panel_Save
     {
         private static EntryFile file = null;
         private static uint prevIdx = 0;
-        private static EntryFile loadedFile = null;
+
+        private static EntryFile lhsEntry = null;
+        private static EntryFile rhsEntry = null;
+
+        private static LogStats lhsStats;
+        private static LogStats rhsStats;
+
+        private static List<Row> rows = new List<Row>()
+        {
+            new Row("Entries", (stats) => stats.Entries, false),
+            new Row("Total Calls", (stats) => stats.TotalCalls),
+            new Row("Total Time", (stats) => stats.TotalTime),
+            new Row("Avg Time/Call", (stats) => stats.MeanTimePerCall),
+            new Row("Avg Calls/Update", (stats) => stats.MeanCallsPerUpdateCycle),
+            new Row("Avg Time/Update", (stats) => stats.MeanTimePerUpdateCycle),
+            new Row("Median Calls", (stats) => stats.MedianCalls),
+            new Row("Median Time", (stats) => stats.MedianTime),
+            new Row("Max Time", (stats) => stats.HighestTime),
+            new Row("Max Calls/Update", (stats) => stats.HighestCalls),
+        };
 
         private static FileHeader curHeader = new FileHeader()
         {
@@ -26,7 +78,26 @@ namespace Analyzer.Profiling
             targetEntries = Profiler.RECORDS_HELD,
             name = " " // default to an empty name
         };
+        
 
+        private static void ResetInformation()
+        {
+            file = null;
+            prevIdx = 0;
+            curHeader = new FileHeader()
+            {
+                MAGIC = FileUtility.ENTRY_FILE_MAGIC, // used to verify the file has not been corrupted on disk somehow.
+                scribingVer = 1,
+                targetEntries = Profiler.RECORDS_HELD,
+                name = " " // default to an empty name
+            };
+            
+            lhsEntry = null;
+            rhsEntry = null;
+            lhsStats = null;
+            rhsStats = null;
+        }
+        
         private static string GetStatus()
         {
             if (file == null) return "Idle";
@@ -47,6 +118,7 @@ namespace Analyzer.Profiling
 
             // todo: can maybe memcopy to improve the performance. 
             var idx = file.header.entries;
+            
 
             while (prevIdx != prof.currentIndex)
             {
@@ -55,37 +127,37 @@ namespace Analyzer.Profiling
                     for (int i = 0; i < prof.hits[idx]; i++)
                     {
                         file.times[idx] = (float)prof.times[prevIdx] / (float) prof.hits[prevIdx];
+                        
                         idx++;
                         file.header.entries = idx;
                         if (idx >= file.header.targetEntries) return;
                     }
                 }
-                else
+                else if (!file.header.onlyEntriesWithValues || (prof.hits[prevIdx] > 0))
                 {
-                    if (!file.header.onlyEntriesWithValues || prof.times[prevIdx] > 0)
-                    {
-                        file.times[idx] = (float)prof.times[prevIdx];
-                        file.calls[idx] = prof.hits[prevIdx];
+                    file.times[idx] = (float)prof.times[prevIdx];
+                    file.calls[idx] = prof.hits[prevIdx];
 
-                        idx++;
-                        file.header.entries = idx;
-                        if (idx >= file.header.targetEntries) return;
-                    }
+                    idx++;
+                    file.header.entries = idx;
+                    if (idx >= file.header.targetEntries) return;
                 }
-                
+ 
                 prevIdx++;
                 prevIdx %= Profiler.RECORDS_HELD;
             }
-
+            
+            file.header.entries = idx;
             prevIdx = prof.currentIndex;
         }
 
-        public static void Draw(Rect r)
+        public static void Draw(Rect r, bool reset)
         {
             if (file != null)
-            {
                 UpdateFile();
-            }
+
+            if (reset)
+                ResetInformation();
 
             var colWidth = Mathf.Max(300, r.width / 3);
             var columnRect = r.RightPartPixels(colWidth);
@@ -97,21 +169,154 @@ namespace Analyzer.Profiling
             r.AdjustVerticallyBy(20f);
             
             DrawTopRow(top);
+
+            if (FileUtility.PreviousEntriesFor(GUIController.CurrentProfiler.label).Any())
+            {
+                DrawComparison(r);
+            }
+        }
+
+        private static void DrawComparison(Rect r)
+        {
+            //              [ Left File ]       [ Right File ]     [ Delta ]
+            // Calls Mean       25000               23000         -2000 ( -8% )
+            // Time Mean       0.037ms             0.031ms        -0.006ms ( - 16% )
+            var topPart = r.TopPartPixels(30f);
+            r.AdjustVerticallyBy(30f);
+
+            var buttonsRect = topPart.LeftPartPixels(topPart.width - "Compare".GetWidthCached()); 
+            var first = buttonsRect.LeftHalf();
+            var second = buttonsRect.RightHalf();
+            var third = topPart.RightPartPixels("Compare".GetWidthCached());
+
+            void SelectEntry(Rect rect, bool left)
+            {
+                var loc = left ? "Left" : "Right";
+                var name = $"{loc} File: {(left ? lhsEntry : rhsEntry)?.header.Name ?? "not selected"}";
+                if (Widgets.ButtonText(rect.ContractedBy(4f), name))
+                {
+                    var options = new List<FloatMenuOption>();
+                    foreach (var entry in FileUtility.PreviousEntriesFor(GUIController.CurrentProfiler.label))
+                    {
+                        var header = FileUtility.ReadHeader(entry);
+
+                        var act = left 
+                            ? (Action) ( () => lhsEntry = FileUtility.ReadFile(entry) ) 
+                            : (Action) ( () => rhsEntry = FileUtility.ReadFile(entry) );
+                        
+                        options.Add(new FloatMenuOption(header.Name, act)); 
+                    }
+
+                    if (file != null && file.header.entries == file.header.targetEntries)
+                    {
+                        var act = left 
+                            ? (Action) ( () => lhsEntry = file ) 
+                            : (Action) ( () => rhsEntry = file );
+                        options.Add(new FloatMenuOption("Current", act));
+                    }
+                    Find.WindowStack.Add(new FloatMenu(options));
+                }
+            }
+            
+            SelectEntry(first, true);
+            SelectEntry(second, false);
+            if (Widgets.ButtonText(third.ContractedBy(4f), "Compare"))
+            {
+                if (lhsEntry is null || rhsEntry is null)
+                {
+                    ThreadSafeLogger.Error("One of the comparisons was null, waiting for valid inputs");
+                    return;
+                }
+                
+                lhsStats = LogStats.GatherStats(lhsEntry.calls, lhsEntry.times, lhsEntry.header.entries);
+                rhsStats = LogStats.GatherStats(rhsEntry.calls, rhsEntry.times, rhsEntry.header.entries);
+            }
+
+            if (lhsStats is null || rhsStats is null) return;
+
+            var anchor = Text.Anchor;
+            var colours = new Color[] { Color.red, GUI.color, Color.green };
+
+            var headerRect = r.TopPartPixels(30f);
+            r.AdjustVerticallyBy(30f);
+            Text.Anchor = TextAnchor.MiddleCenter;
+            
+            DubGUI.Heading(headerRect.LeftHalf().LeftHalf(), "Row Value");
+            DubGUI.Heading(headerRect.LeftHalf().RightHalf(), "Left Stats");
+            DubGUI.Heading(headerRect.RightHalf().LeftHalf(), "Right Stats");
+            DubGUI.Heading(headerRect.RightHalf().RightHalf(), "Delta");
+
+            GUI.color *= new Color(1f, 1f, 1f, 0.4f);
+            Widgets.DrawLineHorizontal(r.x, r.y, r.width);
+            GUI.color = Color.white;
+
+            Text.Anchor = anchor;
+                
+            for (int i = 0; i < 4; i++)
+            {
+                if (i > 0)
+                {
+                    Text.Anchor = TextAnchor.MiddleCenter;
+                }
+                
+                var column = new Rect(r.x + i * (r.width / 4.0f), r.y, r.width / 4.0f, r.height);
+
+                var rect = column.TopPartPixels(Text.LineHeight + 4f);
+                foreach (var row in rows)
+                {
+                    switch (i)
+                    {
+                        case 0 : Widgets.Label(rect, "  " + row.name); break;
+                        case 1 : Widgets.Label(rect, row.IsInt() ? row.Int(lhsStats).ToString() : $"{row.Double(lhsStats):F5}"); break;
+                        case 2 : Widgets.Label(rect, row.IsInt() ? row.Int(rhsStats).ToString() : $"{row.Double(rhsStats):F5}"); break;
+                        case 3 :
+                            
+                            var sb = new StringBuilder();
+                            double dP = 0;
+                            if (row.IsInt())
+                            {
+                                var delta = row.Int(rhsStats) - row.Int(lhsStats);
+                                var sign = (delta > 0) ? "+" : "";
+                                dP = (delta / (double)row.Int(lhsStats)) * 100;
+
+                                sb.Append($"{sign}{delta} ( {sign}{dP:F2}% )");
+                            }
+                            else
+                            {                                
+                                var delta = row.Double(rhsStats) - row.Double(lhsStats);
+                                var sign = (delta > 0) ? "+" : "";
+                                dP = (delta / row.Double(lhsStats)) * 100;
+
+                                sb.Append($"{sign}{delta:F5} ( {sign}{dP:F2}% )");
+                            }
+                            
+                            var color = dP switch
+                            {
+                                < -2.5 => colours[2],
+                                > 2.5 => colours[0],
+                                _ => colours[1],
+                            };
+                            
+                            GUI.color = color;
+                            Widgets.Label(rect, sb.ToString());
+                            GUI.color = colours[1];
+
+                            break;
+                    }
+                    
+                    column.AdjustVerticallyBy(Text.LineHeight + 4f);
+                    rect = column.TopPartPixels(Text.LineHeight + 4f);
+                }
+            }
+            Text.Anchor = anchor;
         }
 
         public static void DrawTopRow(Rect r)
         {
-            try
-            {
-                Widgets.Label(r.LeftHalf(), "Status: " + GetStatus());
-                Widgets.Label(r.RightHalf(), "Previous Saved Entries: " + FileUtility.PreviousEntriesFor(GUIController.CurrentProfiler.label).Count());
-                
-                throw new Exception();
-            }
-            catch (Exception)
-            {
-                
-            }
+            var statusString = "Status: " + GetStatus();
+            Widgets.Label(r.LeftPartPixels(statusString.GetWidthCached()), statusString);
+            var previousEntriesString = "Previous Saved Entries: " + FileUtility.PreviousEntriesFor(GUIController.CurrentProfiler.label).Count();
+            Widgets.Label(r.RightPartPixels(previousEntriesString.GetWidthCached()), previousEntriesString);
         }
 
         public static void CheckValidHeader()
@@ -145,7 +350,7 @@ namespace Analyzer.Profiling
 
             r = r.ContractedBy(2);
             
-            Listing_Standard s = new Listing_Standard();
+            var s = new Listing_Standard();
             s.Begin(r);
             
             DubGUI.Heading(s, "Options");
@@ -153,16 +358,17 @@ namespace Analyzer.Profiling
             s.CheckboxLabeled("Only Entries with Values", ref curHeader.onlyEntriesWithValues);
             s.CheckboxLabeled("One Entry per Call", ref curHeader.entryPerCall);
             float val = curHeader.targetEntries;
-            DubGUI.LabeledSliderFloat(s, $"Target Entries : {curHeader.targetEntries}", ref val, 50, 50_000);
+            DubGUI.LabeledSliderFloat(s, $"Target Entries", ref val, 50, 50_000);
             curHeader.targetEntries = Mathf.RoundToInt(val);
+            DubGUI.InputField(s.GetRect(30), "Custom Name", ref curHeader.name, ShowName: true);
 
-            if (s.ButtonText("Load Settings From"))
+            if (s.ButtonText("Copy Settings From"))
             {
                 var options = new List<FloatMenuOption>();
                 foreach (var entry in FileUtility.PreviousEntriesFor(GUIController.CurrentProfiler.label))
                 {
                     var header = FileUtility.ReadHeader(entry);
-                    options.Add(new FloatMenuOption(header.name == "" ? entry.Name : header.name, () => curHeader = header));
+                    options.Add(new FloatMenuOption(header.Name, () => curHeader = header));
                 }
                 Find.WindowStack.Add(new FloatMenu(options));
             }
@@ -186,18 +392,11 @@ namespace Analyzer.Profiling
 
             if (s.ButtonText("Save"))
             {
-                FileUtility.WriteFile(null);
-            }
-
-            if (s.ButtonText("Load"))
-            {
-                var options = new List<FloatMenuOption>();
-                foreach (var entry in FileUtility.PreviousEntriesFor(GUIController.CurrentProfiler.label))
-                {
-                    var header = FileUtility.ReadHeader(entry);
-                    options.Add(new FloatMenuOption(header.name == "" ? entry.Name : header.name, () => loadedFile = FileUtility.ReadFile(entry)));
-                }
-                Find.WindowStack.Add(new FloatMenu(options));
+                FileUtility.WriteFile(file);
+                file = null;
+                curHeader.entries = 0;
+                curHeader.methodName = null;
+                curHeader.name = null;
             }
 
             var dbgRect = s.GetRect(Text.LineHeight * 3);

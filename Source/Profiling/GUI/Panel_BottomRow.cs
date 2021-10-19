@@ -80,9 +80,11 @@ namespace Analyzer.Profiling
 
         public static void Draw(Rect rect)
         {
+            bool changed = false;
             if (currentProfilerInformation == null || GUIController.CurrentProfiler != null && currentProfilerInformation.Value.method != GUIController.CurrentProfiler.meth)
             {
                 GetGeneralSidePanelInformation();
+                changed = true;
             }
 
             var statbox = rect;
@@ -103,7 +105,7 @@ namespace Analyzer.Profiling
             Text.Font = GameFont.Tiny;
             Text.Anchor = TextAnchor.MiddleCenter;
 
-            tabRect.width = Mathf.Min(100f, pRect.width / 3f);
+            tabRect.width = Mathf.Min(150f, pRect.width / 3f);
 
             tabRect.x = pRect.x;
             tabRect.y = pRect.y - tabRect.height;
@@ -113,7 +115,7 @@ namespace Analyzer.Profiling
             tabRect.x = tabRect.xMax;
             DrawTab(tabRect, ProfileInfoMode.StackTrace, "Stacktrace");
             tabRect.x = tabRect.xMax;
-            DrawTab(tabRect, ProfileInfoMode.Save, "Save");
+            DrawTab(tabRect, ProfileInfoMode.Save, "Save and Compare");
             tabRect.x = tabRect.xMax;
 
             DubGUI.ResetFont();
@@ -123,7 +125,7 @@ namespace Analyzer.Profiling
                 case ProfileInfoMode.Graph: graph.Draw(pRect.ContractedBy(1)); break;
                 case ProfileInfoMode.Patches: Panel_Patches.Draw(pRect, currentProfilerInformation); break;
                 case ProfileInfoMode.StackTrace: Panel_StackTraces.Draw(pRect, currentProfilerInformation); break;
-                case ProfileInfoMode.Save: Panel_Save.Draw(pRect); break;
+                case ProfileInfoMode.Save: Panel_Save.Draw(pRect, changed); break;
             }
         }
 
