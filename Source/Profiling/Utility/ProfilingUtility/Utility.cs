@@ -175,7 +175,7 @@ namespace Analyzer.Profiling
 
         public static string GetMethodKey(MethodBase meth)
         {
-            return GetSignature(meth, false);
+            return GetSignature(meth, Settings.longFormNames);
         }
 
         private static void Notify(string message)

@@ -34,15 +34,10 @@ namespace Analyzer.Profiling
 				int count = __instance.layers.Count;
 				for (int i = 0; i < count; i++)
 				{
-					string Namer()
-					{
-						var n = __instance.layers[i].GetType().ToString();
-						return n;
-					}
+					var type = __instance.layers[i].GetType();
+					var name = type.Name;
 
-					var name = __instance.layers[i].GetType().Name;
-
-					var prof = ProfileController.Start(name, Namer, __instance.layers[i].GetType(), __originalMethod);
+					var prof = ProfileController.Start(name, null, type, __originalMethod);
 					__instance.layers[i].DrawLayer();
 					prof.Stop();
 				}

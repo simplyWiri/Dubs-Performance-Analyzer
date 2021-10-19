@@ -31,7 +31,7 @@ namespace Analyzer.Profiling
                     }
                     catch (Exception)
                     {
-                        prof.Stop();
+                        prof?.Stop();
                     }
                     if (result.IsValid)
                     {

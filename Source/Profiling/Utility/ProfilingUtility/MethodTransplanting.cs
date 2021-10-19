@@ -41,8 +41,7 @@ namespace Analyzer.Profiling
         private static readonly MethodInfo Dict_Get_Value = AccessTools.Method(typeof(Dictionary<string, MethodInfo>), "get_Item");
         private static readonly MethodInfo Dict_TryGetValue = AccessTools.Method(typeof(Dictionary<string, Profiler>), "TryGetValue");
         private static readonly MethodInfo Dict_Add = AccessTools.Method(typeof(Dictionary<string, Profiler>), "Add");
-
-
+        
         public static void ClearCaches()
         {
             patchedMeths.Clear();
@@ -110,12 +109,10 @@ namespace Analyzer.Profiling
             var curLabelMeth = curType.GetMethod("GetLabel", BindingFlags.Public | BindingFlags.Static);
             var curNamerMeth = curType.GetMethod("GetName", BindingFlags.Public | BindingFlags.Static);
             var curTypeMeth = curType.GetMethod("GetType", BindingFlags.Public | BindingFlags.Static);
-
-
+            
             var key = Utility.GetMethodKey(__originalMethod as MethodInfo); // This translates our method into a human-legible key, I.e. Namespace.Type<Generic>:Method
             var methodKey = MethodInfoCache.AddMethod(key, __originalMethod as MethodInfo);
-
-
+            
             // Active Check
             {
                 // if(active && (Analyzer.CurrentlyProfiling))

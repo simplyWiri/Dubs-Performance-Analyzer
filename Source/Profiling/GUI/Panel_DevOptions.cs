@@ -36,8 +36,11 @@ namespace Analyzer.Profiling
 			DubGUI.LabeledSliderFloat(listing, Strings.settings_updates_per_second, ref Settings.updatesPerSecond, 1.0f, 20.0f);
 			DubGUI.Checkbox(Strings.settings_logging, listing, ref Settings.verboseLogging);
 			DubGUI.Checkbox(Strings.settings_disable_tps_counter, listing, ref Settings.disableTPSCounter);
-			DubGUI.Checkbox("settings.debuglog".Tr(), listing, ref Settings.enableLog);
-			DubGUI.Checkbox("settings.showicon".Tr(), listing, ref Settings.showIcon);
+			DubGUI.Checkbox(Strings.settings_enable_debug_log, listing, ref Settings.enableLog);
+			DubGUI.Checkbox(Strings.settings_show_icon, listing, ref Settings.showIcon);
+			if(DubGUI.Checkbox(Strings.settings_long_form_names, listing, ref Settings.longFormNames)) {
+				ThreadSafeLogger.Warning("You will need to restart analyzer to see changes come into effect for tabs which are already open. (Right click on the analyzer icon, and click 'Cleanup' ; or wait 30s after closing analyzer)");
+			}
 
 			var s = Strings.settings_disable_cleanup;
 			var rect = listing.GetRect(Text.LineHeight);

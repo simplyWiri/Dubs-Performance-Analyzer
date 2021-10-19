@@ -60,6 +60,10 @@ namespace Analyzer
         public static string settings_disable_cleanup => "settings.disable.cleanup".Tr();
         public static string settings_disable_cleanup_desc => "settings.disable.cleanup.desc".Tr();
         public static string settings_disable_tps_counter => "settings.disable.tps.counter".Tr();
+        public static string settings_enable_debug_log => "settings.enable.debug.log".Tr();
+        public static string settings_show_icon => "settings.show.icon".Tr();
+        public static string settings_long_form_names => "settings.long.form.names".Tr();
+
 
         // Dev Options
         public static string devoptions_input_method => "devoptions.input.method".Tr();
