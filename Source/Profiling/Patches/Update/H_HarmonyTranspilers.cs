@@ -19,18 +19,28 @@ namespace Analyzer.Profiling
     public static class H_HarmonyTranspiledMethods
     {
         public static bool Active = false;
-
-
+        
         public static IEnumerable<MethodInfo> GetPatchMethods()
         {
             var patches = Harmony.GetAllPatchedMethods().ToList();
 
-            var filteredTranspilers = patches.Where(m => Harmony.GetPatchInfo(m).Transpilers.Any(p => Utility.IsNotAnalyzerPatch(p.owner))).ToList();
-
-            foreach (var filteredTranspiler in filteredTranspilers)
+            foreach (var patch in patches)
             {
-                yield return filteredTranspiler as MethodInfo;
+                HarmonyLib.Patches p = null;
+                try
+                {
+                    p = Harmony.GetPatchInfo(patch);
+                }
+                catch (Exception e)
+                {
+                    ThreadSafeLogger.ReportException(e, $"Failed to get patch info for {Utility.GetSignature(patch)}");
+                    continue;
+                }
+                
+                if(patch is MethodInfo info && p.Transpilers.Any(p => Utility.IsNotAnalyzerPatch(p.owner))) 
+                    yield return info;
             }
+
         }
     }
 }
