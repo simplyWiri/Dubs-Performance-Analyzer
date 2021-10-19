@@ -46,7 +46,11 @@ jobs:
         path: |
           About/
           1.2/
+          1.3/
           Source/
+          Languages/
+          Defs/
+          Textures/
           !**/.*
         # This final path is to exclude hidden files such as .gitkeep and .DS_STORE. 
         # I would recommend keeping it, but I don't think it will break anything if 
