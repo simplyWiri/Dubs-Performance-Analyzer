@@ -16,6 +16,7 @@ namespace Analyzer.Profiling
     public static class Panel_Save
     {
         private static EntryFile file = null;
+        private static uint prevIdx = 0;
         private static EntryFile loadedFile = null;
 
         private static FileHeader curHeader = new FileHeader()
@@ -38,15 +39,52 @@ namespace Analyzer.Profiling
                 : $"Collecting Entries {ents}/{target} ({(ents / (float)target) * 100:F2}%)";
         }
 
+        private static void UpdateFile()
+        {
+            if (file.header.entries >= file.header.targetEntries) return;
+            
+            var prof = GUIController.CurrentProfiler;
+
+            // todo: can maybe memcopy to improve the performance. 
+            var idx = file.header.entries;
+
+            while (prevIdx != prof.currentIndex)
+            {
+                if (file.header.entryPerCall)
+                {
+                    for (int i = 0; i < prof.hits[idx]; i++)
+                    {
+                        file.times[idx] = (float)prof.times[prevIdx] / (float) prof.hits[prevIdx];
+                        idx++;
+                        file.header.entries = idx;
+                        if (idx >= file.header.targetEntries) return;
+                    }
+                }
+                else
+                {
+                    if (!file.header.onlyEntriesWithValues || prof.times[prevIdx] > 0)
+                    {
+                        file.times[idx] = (float)prof.times[prevIdx];
+                        file.calls[idx] = prof.hits[prevIdx];
+
+                        idx++;
+                        file.header.entries = idx;
+                        if (idx >= file.header.targetEntries) return;
+                    }
+                }
+                
+                prevIdx++;
+                prevIdx %= Profiler.RECORDS_HELD;
+            }
+
+            prevIdx = prof.currentIndex;
+        }
+
         public static void Draw(Rect r)
         {
-            try
+            if (file != null)
             {
-
-            }
-            catch (Exception)
-            {
-                
+                UpdateFile();
             }
 
             var colWidth = Mathf.Max(300, r.width / 3);
@@ -141,8 +179,9 @@ namespace Analyzer.Profiling
                 {
                     header = curHeader,
                     times = new float[curHeader.targetEntries],
-                    calls = new int[curHeader.targetEntries]
                 };
+                if (!curHeader.entryPerCall)
+                    file.calls = new int[curHeader.targetEntries];
             }
 
             if (s.ButtonText("Save"))
