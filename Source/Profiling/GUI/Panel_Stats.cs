@@ -52,11 +52,8 @@ namespace Analyzer.Profiling
                 {
                     var options = new List<FloatMenuOption>
                     {
-                        new FloatMenuOption("Open In Github",
-                            () => Panel_BottomRow.OpenGithub(
-                                $"{currentInformation.Value.typeName}.{currentInformation.Value.methodName}")),
-                        new FloatMenuOption("Open In Dnspy (requires local path)",
-                            () => Panel_BottomRow.OpenDnspy(currentInformation.Value.method))
+                        new FloatMenuOption(Strings.panel_opengithub, () => Panel_BottomRow.OpenGithub($"{currentInformation.Value.typeName}.{currentInformation.Value.methodName}")),
+                        new FloatMenuOption(Strings.panel_opendnspy, () => Panel_BottomRow.OpenDnspy(currentInformation.Value.method))
                     };
 
                     Find.WindowStack.Add(new FloatMenu(options));
@@ -67,18 +64,20 @@ namespace Analyzer.Profiling
                 sb.Clear();
             }
 
+            var cat = GUIController.CurrentCategory == Category.Tick ? "Tick" : "Update";
+
             sb.AppendLine($"Total Entries:".Colorize(Color.grey) + $" { stats.Entries}");
             sb.AppendLine($"Total Calls:".Colorize(Color.grey) + $" {stats.TotalCalls}");
             sb.AppendLine($"Total Time:".Colorize(Color.grey) + $" {stats.TotalTime:0.000}ms");
 
             sb.AppendLine($"Avg Time/Call:".Colorize(Color.grey) + $" {stats.MeanTimePerCall:0.000}ms");
-            sb.AppendLine($"Avg Calls/Update:".Colorize(Color.grey) + $" {stats.MeanCallsPerUpdateCycle:0.00}");
-            sb.AppendLine($"Avg Time/Update:".Colorize(Color.grey) + $" {stats.MeanTimePerUpdateCycle:0.000}ms");
+            sb.AppendLine($"Avg Calls/{cat}:".Colorize(Color.grey) + $" {stats.MeanCallsPerUpdateCycle:0.00}");
+            sb.AppendLine($"Avg Time/{cat}:".Colorize(Color.grey) + $" {stats.MeanTimePerUpdateCycle:0.000}ms");
 
             sb.AppendLine($"Median Calls:".Colorize(Color.grey) + $" {stats.MedianCalls}");
             sb.AppendLine($"Median Time:".Colorize(Color.grey) + $" {stats.MedianTime}");
             sb.AppendLine($"Max Time:".Colorize(Color.grey) + $" {stats.HighestTime:0.000}ms");
-            sb.AppendLine($"Max Calls/Update:".Colorize(Color.grey) + $" {stats.HighestCalls}");
+            sb.AppendLine($"Max Calls/{cat}:".Colorize(Color.grey) + $" {stats.HighestCalls}");
 
             listing.Label(sb.ToTaggedString().Trim());
 

@@ -12,10 +12,9 @@ namespace Analyzer.Profiling
             {
                 ProfileController.Start("Tick");
             }
-#if DEBUG
+
             if (GUIController.CurrentCategory == Category.Tick) // If we in Tick mode, start our update (can happen multiple times p frame)
                 ProfileController.BeginUpdate();
-#endif
         }
 
         public static void Postfix()

@@ -15,10 +15,8 @@ namespace Analyzer.Profiling
             if (Active)
                 ProfileController.Start("Game Update");
 
-#if DEBUG
             if (GUIController.CurrentCategory != Category.Tick)
                 ProfileController.BeginUpdate();
-#endif
         }
 
         public static void Postfix()

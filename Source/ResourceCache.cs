@@ -90,7 +90,7 @@ namespace Analyzer
         public static string logs_calls => "logs.calls".Tr();
         public static string logs_name => "logs.name".Tr();
         public static string logs_total => "logs.total".Tr();
-        public static string logs_callspu => "logs.callspu".Tr();
+        public static string logs_callspu(string cycle) => "logs.callspu".Translate(cycle);
 
         public static string logs_max_desc => "logs.max.desc".Tr();
         public static string logs_av_desc => "logs.av.desc".Tr();
@@ -99,6 +99,13 @@ namespace Analyzer
         public static string logs_calls_desc => "logs.calls.desc".Tr();
         public static string logs_name_desc => "logs.name.desc".Tr();
         public static string logs_total_desc => "logs.total.desc".Tr();
-        public static string logs_callspu_desc => "logs.callspu.desc".Tr();
+        public static string logs_callspu_desc(string cycle) => "logs.callspu.desc".Translate(cycle);
+        
+        // Bottom tab panels
+
+        public static string panel_mod_name => "panel.mod.name".Tr();
+        public static string panel_patch_type => "panel.patch.type".Tr();
+        public static string panel_opengithub => "panel.opengithub".Tr();
+        public static string panel_opendnspy => "panel.opendnspy".Tr();
     }
 }

@@ -47,15 +47,15 @@ namespace Analyzer.Profiling
 
                 if (Mouse.IsOver(row))
                 {
-                    TooltipHandler.TipRegion(row, $"Mod Name: {patch.modName}\nPatch Type: {patch.patchType}");
+                    TooltipHandler.TipRegion(row, $"{Strings.panel_mod_name}: {patch.modName}\n{Strings.panel_patch_type}: {patch.patchType}");
                 }
 
                 if (Input.GetMouseButtonDown(1) && row.Contains(Event.current.mousePosition)) // mouse button right
                 {
                     var options = new List<FloatMenuOption>()
                     {
-                        new FloatMenuOption("Open In Github", () => Panel_BottomRow.OpenGithub($"{patch.typeName}.{patch.methodName}")),
-                        new FloatMenuOption("Open In Dnspy (requires local path)", () => Panel_BottomRow.OpenDnspy(patch.method))
+                        new FloatMenuOption(Strings.panel_opengithub, () => Panel_BottomRow.OpenGithub($"{patch.typeName}.{patch.methodName}")),
+                        new FloatMenuOption(Strings.panel_opendnspy, () => Panel_BottomRow.OpenDnspy(patch.method))
                     };
 
                     Find.WindowStack.Add(new FloatMenu(options));
