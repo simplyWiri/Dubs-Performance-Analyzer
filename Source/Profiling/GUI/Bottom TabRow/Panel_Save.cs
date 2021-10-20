@@ -74,7 +74,7 @@ namespace Analyzer.Profiling
         private static FileHeader curHeader = new FileHeader()
         {
             MAGIC = FileUtility.ENTRY_FILE_MAGIC, // used to verify the file has not been corrupted on disk somehow.
-            scribingVer = 1,
+            scribingVer = FileUtility.SCRIBE_FILE_VER,
             targetEntries = Profiler.RECORDS_HELD,
             name = " " // default to an empty name
         };
@@ -87,7 +87,7 @@ namespace Analyzer.Profiling
             curHeader = new FileHeader()
             {
                 MAGIC = FileUtility.ENTRY_FILE_MAGIC, // used to verify the file has not been corrupted on disk somehow.
-                scribingVer = 1,
+                scribingVer = FileUtility.SCRIBE_FILE_VER,
                 targetEntries = Profiler.RECORDS_HELD,
                 name = " " // default to an empty name
             };
@@ -115,40 +115,49 @@ namespace Analyzer.Profiling
             if (file.header.entries >= file.header.targetEntries) return;
             
             var prof = GUIController.CurrentProfiler;
-
-            // todo: can maybe memcopy to improve the performance. 
             var idx = file.header.entries;
             
-
             while (prevIdx != prof.currentIndex)
             {
+                if (file.header.entries >= file.header.targetEntries) return;
+                
                 if (file.header.entryPerCall)
                 {
-                    for (int i = 0; i < prof.hits[idx]; i++)
-                    {
-                        file.times[idx] = (float)prof.times[prevIdx] / (float) prof.hits[prevIdx];
-                        
-                        idx++;
-                        file.header.entries = idx;
-                        if (idx >= file.header.targetEntries) return;
-                    }
-                }
-                else if (!file.header.onlyEntriesWithValues || (prof.hits[prevIdx] > 0))
+                    var len = prof.hits[prevIdx];
+                    len = Mathf.Min(file.header.targetEntries - file.header.entries, len);
+
+                    if (len == 0) continue;
+                    Array.Fill(file.times, prof.times[prevIdx] / (double)prof.hits[prevIdx], idx, len);
+
+                    idx += len;
+                    file.header.entries += len;
+                } else if (file.header.onlyEntriesWithValues && prof.hits[prevIdx] > 0)
                 {
-                    file.times[idx] = (float)prof.times[prevIdx];
+                    file.times[idx] = prof.times[prevIdx];
                     file.calls[idx] = prof.hits[prevIdx];
 
                     idx++;
-                    file.header.entries = idx;
-                    if (idx >= file.header.targetEntries) return;
                 }
- 
+                else
+                {
+                    var len = (int)((prof.currentIndex < prevIdx)
+                        ? prof.currentIndex - prevIdx
+                        : Profiler.RECORDS_HELD - prevIdx);
+                    
+                    len = Math.Min(file.header.targetEntries - file.header.entries, len);
+                    if (len == 0) continue;
+
+                    Array.Copy(prof.times, (int)prevIdx, file.times, idx, len);
+                    Array.Copy(prof.hits, (int)prevIdx, file.calls, idx, len);
+
+                    idx += len;
+                    prevIdx += (uint)len;
+                }
+
                 prevIdx++;
                 prevIdx %= Profiler.RECORDS_HELD;
+                file.header.entries = idx;
             }
-            
-            file.header.entries = idx;
-            prevIdx = prof.currentIndex;
         }
 
         public static void Draw(Rect r, bool reset)
@@ -181,13 +190,13 @@ namespace Analyzer.Profiling
             //              [ Left File ]       [ Right File ]     [ Delta ]
             // Calls Mean       25000               23000         -2000 ( -8% )
             // Time Mean       0.037ms             0.031ms        -0.006ms ( - 16% )
-            var topPart = r.TopPartPixels(30f);
-            r.AdjustVerticallyBy(30f);
+            var topPart = r.TopPartPixels(50f);
+            r.AdjustVerticallyBy(50f);
 
-            var buttonsRect = topPart.LeftPartPixels(topPart.width - "Compare".GetWidthCached()); 
+            var buttonsRect = topPart.LeftPartPixels(topPart.width - ( "Compare".GetWidthCached() * 2)); 
             var first = buttonsRect.LeftHalf();
             var second = buttonsRect.RightHalf();
-            var third = topPart.RightPartPixels("Compare".GetWidthCached());
+            var third = topPart.RightPartPixels("Compare".GetWidthCached() * 1.6f);
 
             void SelectEntry(Rect rect, bool left)
             {
@@ -368,6 +377,7 @@ namespace Analyzer.Profiling
                 foreach (var entry in FileUtility.PreviousEntriesFor(GUIController.CurrentProfiler.label))
                 {
                     var header = FileUtility.ReadHeader(entry);
+                    ThreadSafeLogger.Message($"{header.methodName} `{header.name}`");
                     options.Add(new FloatMenuOption(header.Name, () => curHeader = header));
                 }
                 Find.WindowStack.Add(new FloatMenu(options));
@@ -384,7 +394,7 @@ namespace Analyzer.Profiling
                 file = new EntryFile()
                 {
                     header = curHeader,
-                    times = new float[curHeader.targetEntries],
+                    times = new double[curHeader.targetEntries],
                 };
                 if (!curHeader.entryPerCall)
                     file.calls = new int[curHeader.targetEntries];

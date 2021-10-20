@@ -29,7 +29,7 @@ namespace Analyzer.Profiling
     public class EntryFile
     {
         public FileHeader header;
-        public float[] times;
+        public double[] times;
         public int[] calls;
 
     }
@@ -38,6 +38,7 @@ namespace Analyzer.Profiling
     public static class FileUtility
     {
         public const int ENTRY_FILE_MAGIC = 440985710;
+        public const int SCRIBE_FILE_VER = 1;
         
         private static string INVALID_CHARS = $@"[{Regex.Escape(new string(Path.GetInvalidFileNameChars()))}]+";
         public static string GetFileLocation => Path.Combine(GenFilePaths.SaveDataFolderPath, "Analyzer");
@@ -94,13 +95,13 @@ namespace Analyzer.Profiling
                     entryFile.header = ReadHeader(reader);
                     if (entryFile.header.MAGIC == -1) return null;
 
-                    entryFile.times = new float[entryFile.header.entries];
+                    entryFile.times = new double[entryFile.header.entries];
                     if (!entryFile.header.entryPerCall)
                         entryFile.calls = new int[entryFile.header.entries];
 
                     for (int i = 0; i < entryFile.header.entries; i++)
                     {
-                        entryFile.times[i] = reader.ReadSingle();
+                        entryFile.times[i] = reader.ReadDouble();
                         if (!entryFile.header.entryPerCall)
                             entryFile.calls[i] = reader.ReadInt32();
                     }

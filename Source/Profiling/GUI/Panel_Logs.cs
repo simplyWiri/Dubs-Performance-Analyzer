@@ -93,7 +93,7 @@ namespace Analyzer.Profiling
                 case SortBy.Percent: return $" {log.percent * 100:0.0}% ";
                 case SortBy.Name: return "    " + log.label;
                 case SortBy.Total: return $" {log.total:0.000}ms ";
-                case SortBy.CallsPu: return $" {Mathf.CeilToInt(log.calls/log.entries).ToString("N0", CultureInfo.InvariantCulture)} ";
+                case SortBy.CallsPu: return $" {log.calls/log.entries:F3}";
             }
 
             return "";

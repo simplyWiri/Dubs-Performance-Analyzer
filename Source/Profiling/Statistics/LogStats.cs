@@ -40,7 +40,6 @@ namespace Analyzer.Profiling
 
             var logCount = Analyzer.GetCurrentLogCount;
             var curProf = GUIController.CurrentProfiler;
-            var currentIndex = curProf.currentIndex;
 
             var lTimes = new double[Profiler.RECORDS_HELD];
             var lCalls = new int[Profiler.RECORDS_HELD];
@@ -48,10 +47,10 @@ namespace Analyzer.Profiling
             Array.Copy(curProf.times, lTimes, Profiler.RECORDS_HELD);
             Array.Copy(curProf.hits, lCalls, Profiler.RECORDS_HELD);
 
-            Task.Factory.StartNew(() => ExecuteWorker(this, lCalls, lTimes, logCount, currentIndex));
+            Task.Factory.StartNew(() => ExecuteWorker(lCalls, lTimes, logCount));
         }
 
-        public static LogStats GatherStats(int[] calls, float[] times, int entries)
+        public static LogStats GatherStats(int[] calls, double[] times, int entries)
         {
             var stats = new LogStats();
             
@@ -84,7 +83,7 @@ namespace Analyzer.Profiling
             return stats;
         }
         
-        public static void ExecuteWorker(LogStats logic, int[] LocalCalls, double[] LocalTimes, int currentLogCount, uint currentIndex)
+        public static void ExecuteWorker(int[] LocalCalls, double[] LocalTimes, int currentLogCount)
         {
             try
             {
@@ -93,37 +92,11 @@ namespace Analyzer.Profiling
                 // this will take this from
                 // o(2*nlogn + n) to o(2*nlogn)
 
-                Array.Sort(LocalCalls);
-                Array.Sort(LocalTimes);
-
-
-                for (var i = 0; i < Profiler.RECORDS_HELD; i++)
-                {
-                    logic.TotalCalls += LocalCalls[i];
-                    logic.TotalTime += LocalTimes[i];
-                }
-
-                // Mean
-                logic.MeanTimePerCall = logic.TotalTime / logic.TotalCalls;
-                logic.MeanTimePerUpdateCycle = logic.TotalTime / currentLogCount;
-                logic.MeanCallsPerUpdateCycle = logic.TotalCalls / (float) currentLogCount;
-
-                var medianOffset = Profiler.RECORDS_HELD - currentLogCount;
-                var middle = currentLogCount / 2;
-                // Medians
-                logic.MedianTime = LocalTimes[medianOffset + middle];
-                logic.MedianCalls = LocalCalls[medianOffset + middle];
-
-                // Max
-                logic.HighestTime = LocalTimes[Profiler.RECORDS_HELD - 1];
-                logic.HighestCalls = LocalCalls[Profiler.RECORDS_HELD - 1];
-
-                // general
-                logic.Entries = currentLogCount;
+                var stats = GatherStats(LocalCalls, LocalTimes, currentLogCount);
 
                 lock (CurrentLogStats.sync) // Dump our current statistics into our static class which our drawing class uses
                 {
-                    CurrentLogStats.stats = logic;
+                    CurrentLogStats.stats = stats;
                 }
             }
             catch (Exception e)
