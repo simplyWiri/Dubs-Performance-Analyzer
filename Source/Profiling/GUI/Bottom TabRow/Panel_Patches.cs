@@ -1,29 +1,19 @@
 ﻿using System.Collections.Generic;
-using System.Reflection;
 using UnityEngine;
 using Verse;
+
 namespace Analyzer.Profiling
 {
-    public struct GeneralInformation
+    public class Panel_Patches : IBottomTabRow
     {
-        public MethodBase method;
-        public string modName;
-        public string assname;
-        public string methodName;
-        public string typeName;
-        public string patchType;
-        public List<GeneralInformation> patches;
-    }
-    public static class Panel_Patches
-    {
-        private static float x = 0;
-        static float y = 0;
-        static Vector2 scroller;
+        private float x = 0;
+        private float y = 0;
+        private Vector2 scroll = Vector2.zero;
 
-        public static void Draw(Rect inrect, GeneralInformation? currentInformation)
+        public void Draw(Rect inrect, GeneralInformation? currentInformation)
         {
+            if (currentInformation == null) return;
             inrect = inrect.ContractedBy(4);
-            if (currentInformation == null || currentInformation.Value.patches.NullOrEmpty()) return;
 
             Text.Font = GameFont.Tiny;
             Text.Anchor = TextAnchor.MiddleLeft;
@@ -39,7 +29,7 @@ namespace Analyzer.Profiling
             row.height = 40;
             row.width = Mathf.Max(x, viewrect.width);
 
-            Widgets.BeginScrollView(inrect, ref scroller, viewrect);
+            Widgets.BeginScrollView(inrect, ref scroll, viewrect);
 
             foreach (var patch in currentInformation?.patches)
             {
@@ -62,7 +52,7 @@ namespace Analyzer.Profiling
 
                 if (Input.GetMouseButtonDown(1) && row.Contains(Event.current.mousePosition)) // mouse button right
                 {
-                    List<FloatMenuOption> options = new List<FloatMenuOption>()
+                    var options = new List<FloatMenuOption>()
                     {
                         new FloatMenuOption("Open In Github", () => Panel_BottomRow.OpenGithub($"{patch.typeName}.{patch.methodName}")),
                         new FloatMenuOption("Open In Dnspy (requires local path)", () => Panel_BottomRow.OpenDnspy(patch.method))
@@ -79,6 +69,13 @@ namespace Analyzer.Profiling
             Widgets.EndScrollView();
 
             DubGUI.ResetFont();
+        }
+
+        public void ResetState(GeneralInformation? _)
+        {
+            x = 0;
+            y = 0;
+            scroll = Vector2.zero;
         }
     }
 }

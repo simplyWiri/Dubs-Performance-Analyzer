@@ -45,15 +45,13 @@ namespace Analyzer.Profiling
     public class Panel_BottomRow
     {
         public static GeneralInformation? currentProfilerInformation;
-        public static List<BottomRowPanel> panels = new List<BottomRowPanel>
-        {
-            new BottomRowPanel(ProfileInfoMode.Stats, 0, 250f),
-            new BottomRowPanel(ProfileInfoMode.Graph, 268, 900f)
-        };
 
         public static ProfileInfoMode ProfileInfoTab;
 
-        public static Panel_Graph graph = new Panel_Graph();
+        private static Panel_Graph graph = new Panel_Graph();
+        private static Panel_Patches patches = new Panel_Patches();
+        private static Panel_Save save = new Panel_Save();
+        private static Panel_StackTraces stacktraces = new Panel_StackTraces();
 
         static Rect tabRect = new Rect(0, 0, 150, 18);
         public static void DrawTab(Rect r, ProfileInfoMode i, string lab)
@@ -80,17 +78,25 @@ namespace Analyzer.Profiling
 
         public static void Draw(Rect rect)
         {
-            bool changed = false;
-            if (currentProfilerInformation == null || GUIController.CurrentProfiler != null && currentProfilerInformation.Value.method != GUIController.CurrentProfiler.meth)
+            if (GUIController.CurrentProfiler == null) return;
+            
+            if (currentProfilerInformation == null || currentProfilerInformation.Value.method != GUIController.CurrentProfiler.meth)
             {
+                ResetCurrentPanel();
                 GetGeneralSidePanelInformation();
-                changed = true;
+                
+                // are we in the patches category, but the method has no patches?
+                if (ProfileInfoTab == ProfileInfoMode.Patches && (currentProfilerInformation?.patches.Any() ?? false))
+                    ProfileInfoTab = ProfileInfoMode.Graph;
+                
+                // are we in the stack trace category, but the profiler has no method?
+                if (ProfileInfoTab == ProfileInfoMode.StackTrace && currentProfilerInformation?.method != null)
+                    ProfileInfoTab = ProfileInfoMode.Graph;
             }
 
             var statbox = rect;
             statbox.width = Panel_Tabs.width - 10;
-
-
+            
             var pRect = rect;
             pRect.x = statbox.xMax + 10;
             pRect.width -= statbox.xMax;
@@ -111,10 +117,16 @@ namespace Analyzer.Profiling
             tabRect.y = pRect.y - tabRect.height;
             DrawTab(tabRect, ProfileInfoMode.Graph, "Graph");
             tabRect.x = tabRect.xMax;
-            DrawTab(tabRect, ProfileInfoMode.Patches, "Patches");
-            tabRect.x = tabRect.xMax;
-            DrawTab(tabRect, ProfileInfoMode.StackTrace, "Stacktrace");
-            tabRect.x = tabRect.xMax;
+            if (currentProfilerInformation?.patches.Any() ?? false)
+            {
+                DrawTab(tabRect, ProfileInfoMode.Patches, "Patches");
+                tabRect.x = tabRect.xMax;
+            }
+            if (currentProfilerInformation?.method != null)
+            {
+                DrawTab(tabRect, ProfileInfoMode.StackTrace, "Stacktrace");
+                tabRect.x = tabRect.xMax;
+            }
             DrawTab(tabRect, ProfileInfoMode.Save, "Save and Compare");
             tabRect.x = tabRect.xMax;
 
@@ -123,10 +135,20 @@ namespace Analyzer.Profiling
             switch (ProfileInfoTab)
             {
                 case ProfileInfoMode.Graph: graph.Draw(pRect.ContractedBy(1)); break;
-                case ProfileInfoMode.Patches: Panel_Patches.Draw(pRect, currentProfilerInformation); break;
-                case ProfileInfoMode.StackTrace: Panel_StackTraces.Draw(pRect, currentProfilerInformation); break;
-                case ProfileInfoMode.Save: Panel_Save.Draw(pRect, changed); break;
+                case ProfileInfoMode.Patches: patches.Draw(pRect, currentProfilerInformation); break;
+                case ProfileInfoMode.StackTrace: stacktraces.Draw(pRect, currentProfilerInformation); break;
+                case ProfileInfoMode.Save: save.Draw(pRect, currentProfilerInformation); break;
             }
+        }
+
+        private static void ResetCurrentPanel()
+        {
+            switch (ProfileInfoTab)
+            {
+                case ProfileInfoMode.Patches: patches.ResetState(currentProfilerInformation); break;
+                case ProfileInfoMode.StackTrace: stacktraces.ResetState(currentProfilerInformation); break;
+                case ProfileInfoMode.Save: save.ResetState(currentProfilerInformation); break;
+            } 
         }
 
         private static void GetGeneralSidePanelInformation()

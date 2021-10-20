@@ -46,16 +46,16 @@ namespace Analyzer.Profiling
     
     
     [HotSwappable]
-    public static class Panel_Save
+    public class Panel_Save : IBottomTabRow
     {
-        private static EntryFile file = null;
-        private static uint prevIdx = 0;
+        private EntryFile file = null;
+        private uint prevIdx = 0;
 
-        private static EntryFile lhsEntry = null;
-        private static EntryFile rhsEntry = null;
+        private EntryFile lhsEntry = null;
+        private EntryFile rhsEntry = null;
 
-        private static LogStats lhsStats;
-        private static LogStats rhsStats;
+        private LogStats lhsStats = null;
+        private LogStats rhsStats = null;
 
         private static List<Row> rows = new List<Row>()
         {
@@ -71,7 +71,7 @@ namespace Analyzer.Profiling
             new Row("Max Calls/Update", (stats) => stats.HighestCalls),
         };
 
-        private static FileHeader curHeader = new FileHeader()
+        private FileHeader curHeader = new FileHeader()
         {
             MAGIC = FileUtility.ENTRY_FILE_MAGIC, // used to verify the file has not been corrupted on disk somehow.
             scribingVer = FileUtility.SCRIBE_FILE_VER,
@@ -79,8 +79,7 @@ namespace Analyzer.Profiling
             name = " " // default to an empty name
         };
         
-
-        private static void ResetInformation()
+        public void ResetState(GeneralInformation? _)
         {
             file = null;
             prevIdx = 0;
@@ -98,7 +97,7 @@ namespace Analyzer.Profiling
             rhsStats = null;
         }
         
-        private static string GetStatus()
+        private string GetStatus()
         {
             if (file == null) return "Idle";
 
@@ -110,7 +109,7 @@ namespace Analyzer.Profiling
                 : $"Collecting Entries {ents}/{target} ({(ents / (float)target) * 100:F2}%)";
         }
 
-        private static void UpdateFile()
+        private void UpdateFile()
         {
             if (file.header.entries >= file.header.targetEntries) return;
             
@@ -160,13 +159,12 @@ namespace Analyzer.Profiling
             }
         }
 
-        public static void Draw(Rect r, bool reset)
+        public void Draw(Rect r, GeneralInformation? info)
         {
+            if (info == null) return;
+
             if (file != null)
                 UpdateFile();
-
-            if (reset)
-                ResetInformation();
 
             var colWidth = Mathf.Max(300, r.width / 3);
             var columnRect = r.RightPartPixels(colWidth);
@@ -185,7 +183,7 @@ namespace Analyzer.Profiling
             }
         }
 
-        private static void DrawComparison(Rect r)
+        private void DrawComparison(Rect r)
         {
             //              [ Left File ]       [ Right File ]     [ Delta ]
             // Calls Mean       25000               23000         -2000 ( -8% )
@@ -320,7 +318,7 @@ namespace Analyzer.Profiling
             Text.Anchor = anchor;
         }
 
-        public static void DrawTopRow(Rect r)
+        public void DrawTopRow(Rect r)
         {
             var statusString = "Status: " + GetStatus();
             Widgets.Label(r.LeftPartPixels(statusString.GetWidthCached()), statusString);
@@ -328,7 +326,7 @@ namespace Analyzer.Profiling
             Widgets.Label(r.RightPartPixels(previousEntriesString.GetWidthCached()), previousEntriesString);
         }
 
-        public static void CheckValidHeader()
+        public void CheckValidHeader()
         {
             if (curHeader.MAGIC != FileUtility.ENTRY_FILE_MAGIC)
             {
@@ -350,7 +348,7 @@ namespace Analyzer.Profiling
         }
         
         
-        public static void DrawColumn(Rect r)
+        public void DrawColumn(Rect r)
         {
             var color = GUI.color;
             GUI.color = color * new Color(1f, 1f, 1f, 0.4f);
