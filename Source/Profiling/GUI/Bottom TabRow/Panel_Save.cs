@@ -161,7 +161,7 @@ namespace Analyzer.Profiling
 
         public void Draw(Rect r, GeneralInformation? info)
         {
-            if (info == null) return;
+            if (GUIController.CurrentProfiler == null) return;
 
             if (file != null)
                 UpdateFile();
@@ -375,7 +375,6 @@ namespace Analyzer.Profiling
                 foreach (var entry in FileUtility.PreviousEntriesFor(GUIController.CurrentProfiler.label))
                 {
                     var header = FileUtility.ReadHeader(entry);
-                    ThreadSafeLogger.Message($"{header.methodName} `{header.name}`");
                     options.Add(new FloatMenuOption(header.Name, () => curHeader = header));
                 }
                 Find.WindowStack.Add(new FloatMenu(options));
