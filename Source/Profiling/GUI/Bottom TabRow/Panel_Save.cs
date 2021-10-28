@@ -136,8 +136,7 @@ namespace Analyzer.Profiling
                     file.calls[idx] = prof.hits[prevIdx];
 
                     idx++;
-                }
-                else
+                } else
                 {
                     var len = (int)((prof.currentIndex < prevIdx)
                         ? prof.currentIndex - prevIdx
@@ -183,18 +182,104 @@ namespace Analyzer.Profiling
             }
         }
 
+        //              [ Left File ]       [ Right File ]     [ Delta ]
+        // Calls Mean       25000               23000         -2000 ( -8% )
+        // Time Mean       0.037ms             0.031ms        -0.006ms ( - 16% )
         private void DrawComparison(Rect r)
         {
-            //              [ Left File ]       [ Right File ]     [ Delta ]
-            // Calls Mean       25000               23000         -2000 ( -8% )
-            // Time Mean       0.037ms             0.031ms        -0.006ms ( - 16% )
             var topPart = r.TopPartPixels(50f);
+            
+            // have not selected any entries to compare.
+            if (!DrawSelectEntries(topPart)) return;
+            
             r.AdjustVerticallyBy(50f);
 
-            var buttonsRect = topPart.LeftPartPixels(topPart.width - ( "Compare".GetWidthCached() * 2)); 
+            var anchor = Text.Anchor;
+            var colours = new Color[] { Color.red, GUI.color, Color.green };
+
+            var headerRect = r.TopPartPixels(30f);
+            r.AdjustVerticallyBy(30f);
+            Text.Anchor = TextAnchor.MiddleCenter;
+            
+            // [     Row     ]  [   Left Stats   ]  [ Right Stats ] [    Delta    ]
+            DubGUI.Heading(headerRect.LeftHalf().LeftHalf(), "Row");
+            DubGUI.Heading(headerRect.LeftHalf().RightHalf(), "Left Stats");
+            DubGUI.Heading(headerRect.RightHalf().LeftHalf(), "Right Stats");
+            DubGUI.Heading(headerRect.RightHalf().RightHalf(), "Delta");
+            
+            GUI.color *= new Color(1f, 1f, 1f, 0.4f);
+            Widgets.DrawLineHorizontal(r.x, r.y, r.width);
+            GUI.color = Color.white;
+
+            Text.Anchor = anchor;
+                
+            for (int i = 0; i < 4; i++)
+            {
+                if (i > 0)
+                    Text.Anchor = TextAnchor.MiddleCenter;
+                
+                var column = new Rect(r.x + i * (r.width / 4.0f), r.y, r.width / 4.0f, r.height);
+
+                var rect = column.TopPartPixels(Text.LineHeight + 4f);
+                foreach (var row in rows)
+                {
+                    switch (i)
+                    {
+                        case 0 : Widgets.Label(rect, "  " + row.name); break;
+                        case 1 : Widgets.Label(rect, row.IsInt() ? row.Int(lhsStats).ToString() : $"{row.Double(lhsStats):F5}"); break;
+                        case 2 : Widgets.Label(rect, row.IsInt() ? row.Int(rhsStats).ToString() : $"{row.Double(rhsStats):F5}"); break;
+                        case 3 :
+                            
+                            var sb = new StringBuilder();
+                            var sign = "";
+                            double delta, dP = 0;
+                            if (row.IsInt())
+                            {
+                                delta = row.Int(rhsStats) - row.Int(lhsStats);
+                                dP = (delta / (double)row.Int(lhsStats)) * 100;
+                            } else {                                
+                                delta = row.Double(rhsStats) - row.Double(lhsStats);
+                                dP = (delta / row.Double(lhsStats)) * 100;
+                            }
+                            
+                            sign = (delta > 0) ? "+" : "";
+                            sb.Append($"{sign}{delta:F5} ( {sign}{dP:F2}% )");
+
+                            var color = dP switch
+                            {
+                                < -2.5 => colours[2],
+                                > 2.5 => colours[0],
+                                _ => colours[1],
+                            };
+                            
+                            GUI.color = color;
+                            Widgets.Label(rect, sb.ToString());
+                            GUI.color = colours[1];
+
+                            break;
+                    }
+                    
+                    column.AdjustVerticallyBy(Text.LineHeight + 4f);
+                    rect = column.TopPartPixels(Text.LineHeight + 4f);
+                }
+            }
+            Text.Anchor = anchor;
+        }
+
+        public void DrawTopRow(Rect r)
+        {
+            var statusString = "Status: " + GetStatus();
+            Widgets.Label(r.LeftPartPixels(statusString.GetWidthCached()), statusString);
+            var previousEntriesString = "Previous Saved Entries: " + FileUtility.PreviousEntriesFor(GUIController.CurrentProfiler.label).Count();
+            Widgets.Label(r.RightPartPixels(previousEntriesString.GetWidthCached()), previousEntriesString);
+        }
+
+        private bool DrawSelectEntries(Rect rect)
+        {
+            var buttonsRect = rect.LeftPartPixels(rect.width - ( "Compare".GetWidthCached() * 2)); 
             var first = buttonsRect.LeftHalf();
             var second = buttonsRect.RightHalf();
-            var third = topPart.RightPartPixels("Compare".GetWidthCached() * 1.6f);
+            var third = rect.RightPartPixels("Compare".GetWidthCached() * 1.6f);
 
             void SelectEntry(Rect rect, bool left)
             {
@@ -232,98 +317,14 @@ namespace Analyzer.Profiling
                 if (lhsEntry is null || rhsEntry is null)
                 {
                     ThreadSafeLogger.Error("One of the comparisons was null, waiting for valid inputs");
-                    return;
+                    return false;
                 }
                 
                 lhsStats = LogStats.GatherStats(lhsEntry.calls, lhsEntry.times, lhsEntry.header.entries);
                 rhsStats = LogStats.GatherStats(rhsEntry.calls, rhsEntry.times, rhsEntry.header.entries);
             }
 
-            if (lhsStats is null || rhsStats is null) return;
-
-            var anchor = Text.Anchor;
-            var colours = new Color[] { Color.red, GUI.color, Color.green };
-
-            var headerRect = r.TopPartPixels(30f);
-            r.AdjustVerticallyBy(30f);
-            Text.Anchor = TextAnchor.MiddleCenter;
-            
-            DubGUI.Heading(headerRect.LeftHalf().LeftHalf(), "Row Value");
-            DubGUI.Heading(headerRect.LeftHalf().RightHalf(), "Left Stats");
-            DubGUI.Heading(headerRect.RightHalf().LeftHalf(), "Right Stats");
-            DubGUI.Heading(headerRect.RightHalf().RightHalf(), "Delta");
-
-            GUI.color *= new Color(1f, 1f, 1f, 0.4f);
-            Widgets.DrawLineHorizontal(r.x, r.y, r.width);
-            GUI.color = Color.white;
-
-            Text.Anchor = anchor;
-                
-            for (int i = 0; i < 4; i++)
-            {
-                if (i > 0)
-                {
-                    Text.Anchor = TextAnchor.MiddleCenter;
-                }
-                
-                var column = new Rect(r.x + i * (r.width / 4.0f), r.y, r.width / 4.0f, r.height);
-
-                var rect = column.TopPartPixels(Text.LineHeight + 4f);
-                foreach (var row in rows)
-                {
-                    switch (i)
-                    {
-                        case 0 : Widgets.Label(rect, "  " + row.name); break;
-                        case 1 : Widgets.Label(rect, row.IsInt() ? row.Int(lhsStats).ToString() : $"{row.Double(lhsStats):F5}"); break;
-                        case 2 : Widgets.Label(rect, row.IsInt() ? row.Int(rhsStats).ToString() : $"{row.Double(rhsStats):F5}"); break;
-                        case 3 :
-                            
-                            var sb = new StringBuilder();
-                            double dP = 0;
-                            if (row.IsInt())
-                            {
-                                var delta = row.Int(rhsStats) - row.Int(lhsStats);
-                                var sign = (delta > 0) ? "+" : "";
-                                dP = (delta / (double)row.Int(lhsStats)) * 100;
-
-                                sb.Append($"{sign}{delta} ( {sign}{dP:F2}% )");
-                            }
-                            else
-                            {                                
-                                var delta = row.Double(rhsStats) - row.Double(lhsStats);
-                                var sign = (delta > 0) ? "+" : "";
-                                dP = (delta / row.Double(lhsStats)) * 100;
-
-                                sb.Append($"{sign}{delta:F5} ( {sign}{dP:F2}% )");
-                            }
-                            
-                            var color = dP switch
-                            {
-                                < -2.5 => colours[2],
-                                > 2.5 => colours[0],
-                                _ => colours[1],
-                            };
-                            
-                            GUI.color = color;
-                            Widgets.Label(rect, sb.ToString());
-                            GUI.color = colours[1];
-
-                            break;
-                    }
-                    
-                    column.AdjustVerticallyBy(Text.LineHeight + 4f);
-                    rect = column.TopPartPixels(Text.LineHeight + 4f);
-                }
-            }
-            Text.Anchor = anchor;
-        }
-
-        public void DrawTopRow(Rect r)
-        {
-            var statusString = "Status: " + GetStatus();
-            Widgets.Label(r.LeftPartPixels(statusString.GetWidthCached()), statusString);
-            var previousEntriesString = "Previous Saved Entries: " + FileUtility.PreviousEntriesFor(GUIController.CurrentProfiler.label).Count();
-            Widgets.Label(r.RightPartPixels(previousEntriesString.GetWidthCached()), previousEntriesString);
+            return !(lhsStats is null || rhsStats is null);
         }
 
         public void CheckValidHeader()
