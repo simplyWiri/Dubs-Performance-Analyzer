@@ -96,8 +96,11 @@ namespace Analyzer.Profiling
                     if (entryFile.header.MAGIC == -1) return null;
 
                     entryFile.times = new double[entryFile.header.entries];
-                    if (!entryFile.header.entryPerCall)
-                        entryFile.calls = new int[entryFile.header.entries];
+                    entryFile.calls = new int[entryFile.header.entries];
+                    if (entryFile.header.entryPerCall)
+                    {
+                        Array.Fill(entryFile.calls, 1);
+                    }
 
                     for (int i = 0; i < entryFile.header.entries; i++)
                     {

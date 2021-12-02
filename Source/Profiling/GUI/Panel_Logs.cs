@@ -93,7 +93,9 @@ namespace Analyzer.Profiling
                 case SortBy.Percent: return $" {log.percent * 100:0.0}% ";
                 case SortBy.Name: return "    " + log.label;
                 case SortBy.Total: return $" {log.total:0.000}ms ";
-                case SortBy.CallsPu: return $" {log.calls/log.entries:F3}";
+                case SortBy.CallsPu:
+                    var num = log.calls / log.entries;
+                    return num < 1 ? $" {num:F3}" : $" {(int)Math.Round(num)}";
             }
 
             return "";

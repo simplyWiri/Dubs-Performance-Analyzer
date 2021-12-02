@@ -66,11 +66,10 @@ namespace Analyzer.Profiling
         // status of the patching
         private void DrawCurrentStatus(Rect statusBox, MethodInfo method)
         {
-            const string activeTemplate = "Tracing; {0} traces collected";
+            const string activeTemplate = "Tracing; {0:#,##0.##} traces collected";
             const string idleTemplate = "Idle";
-            const string inactiveTemplate = "Finished; {0} traces collected";
-
-            const string traceInformationTempate = "Calls: {0}, Mods Involved {1}  ";
+            const string inactiveTemplate = "Finished; {0:#,##0.##} traces collected";
+            const string traceInformationTempate = "Calls: {0:#,##0.##} ({1:P}), Mods Involved {2}  ";
             
             var status = "";
 
@@ -93,7 +92,7 @@ namespace Analyzer.Profiling
 
             var modsInvolved = CurrentTrace.Methods.Sum(st => st.Patches);
             
-            status = string.Format(traceInformationTempate, ct.Count, modsInvolved);
+            status = string.Format(traceInformationTempate, ct.Count, ct.Count / (float)currentTrackedStacktraces, modsInvolved);
             Widgets.Label(statusBox.RightPartPixels(status.GetWidthCached()), status);
         }
 

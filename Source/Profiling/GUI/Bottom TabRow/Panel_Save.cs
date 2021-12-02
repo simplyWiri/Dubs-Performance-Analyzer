@@ -223,6 +223,7 @@ namespace Analyzer.Profiling
                 var rect = column.TopPartPixels(Text.LineHeight + 4f);
                 foreach (var row in rows)
                 {
+                    // i is the current column, 0 = name, 1 = lhs, 2 = rhs, 3 = delta
                     switch (i)
                     {
                         case 0 : Widgets.Label(rect, "  " + row.name); break;
