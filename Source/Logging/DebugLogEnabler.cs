@@ -3,40 +3,31 @@ using RimWorld;
 using UnityEngine;
 using Verse;
 
-namespace Analyzer
+namespace Analyzer.Logging
 {
     public static class DebugLogenabler
     {
-        private static bool doit = false;
         public static void ErrorPrefix()
         {
             if (!Settings.enableLog) return;
-            doit = true;
+            
         }
 
         public static void ErrorPostfix()
         {
-            doit = false;
+            
         }
 
         public static bool DevModePrefix(ref bool __result)
         {
             if (!Settings.enableLog) return true;
-            __result = Prefs.data == null || doit || Prefs.data.devMode;
+            __result = Prefs.data == null || Prefs.data.devMode;
             return false;
         }
 
         public static void DebugKeysPatch(DebugWindowsOpener __instance)
         {
-            if (Prefs.DevMode)
-            {
-                return;
-            }
-
-            if (!Settings.enableLog)
-            {
-                return;
-            }
+            if (Prefs.DevMode || !Settings.enableLog) return;
 
             if (KeyBindingDefOf.Dev_ToggleDebugLog.KeyDownEvent)
             {

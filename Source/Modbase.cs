@@ -3,6 +3,7 @@ using Analyzer.Profiling;
 using HarmonyLib;
 using RimWorld;
 using System;
+using Analyzer.Logging;
 using UnityEngine;
 using Verse;
 using StackTraceUtility = Analyzer.Profiling.StackTraceUtility;
@@ -87,17 +88,22 @@ namespace Analyzer
                     var logError = AccessTools.Method(typeof(Log), nameof(Log.Error), new Type[] {typeof(string)});
 
                     StaticHarmony.Patch(logError,
-                        prefix: new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.ErrorPrefix)),
-                        new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.ErrorPostfix)));
+                        prefix: new HarmonyMethod(typeof(Logging.DebugLogenabler), nameof(Logging.DebugLogenabler.ErrorPrefix)),
+                        new HarmonyMethod(typeof(Logging.DebugLogenabler), nameof(Logging.DebugLogenabler.ErrorPostfix)));
                     StaticHarmony.Patch(AccessTools.Method(typeof(Prefs), "get_DevMode"),
-                        prefix: new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.DevModePrefix)));
+                        prefix: new HarmonyMethod(typeof(Logging.DebugLogenabler), nameof(Logging.DebugLogenabler.DevModePrefix)));
                     StaticHarmony.Patch(AccessTools.Method(typeof(DebugWindowsOpener), "DevToolStarterOnGUI"),
-                        prefix: new HarmonyMethod(typeof(DebugLogenabler), nameof(DebugLogenabler.DebugKeysPatch)));
+                        prefix: new HarmonyMethod(typeof(Logging.DebugLogenabler), nameof(Logging.DebugLogenabler.DebugKeysPatch)));
                 }
 
                 {
                     // Performance Patches
                     PerformancePatches.InitialisePatches();
+                }
+
+                {
+                    // Logging Patches
+                    Patch_Stacktraces.Patch(StaticHarmony);
                 }
 
 #if DEBUG

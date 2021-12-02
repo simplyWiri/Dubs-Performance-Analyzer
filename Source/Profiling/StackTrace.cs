@@ -247,14 +247,22 @@ namespace Analyzer.Profiling
             return retString.ToString();
         }
         
-        public static string GetStackTraceString(StackTrace st, out List<MethodMeta> methods)
+        public static string GetStackTraceString(StackTrace st, bool offset, out List<MethodMeta> methods)
         {
             var stringBuilder = new StringBuilder(255);
             methods = new List<MethodMeta>();
 
             for (int i = 0; i < st.FrameCount; i++)
             {
-                var method = Harmony.GetMethodFromStackframe(st.GetFrame(i));
+                var frame = st.GetFrame(i);
+                
+                if (offset)
+                {
+                    stringBuilder.AppendFormat("  at <0x{0:x5}> in ", frame.GetILOffset());
+                }
+
+                
+                var method = Harmony.GetMethodFromStackframe(frame);
 
                 if (method is MethodInfo replacement)
                 {
@@ -269,7 +277,7 @@ namespace Analyzer.Profiling
                 {
                     var p = Harmony.GetPatchInfo(method);
 
-                    if (p != null && p.Owners.Count != 0)
+                    if (p != null && p.Owners.Any(Utility.IsNotAnalyzerPatch))
                     {
                         var pString = GetPatchStrings(method, p);
 
@@ -294,11 +302,16 @@ namespace Analyzer.Profiling
 
             if (cachedStrings.TryGetValue(meth, out var result) is false)
             {
-                result = Utility.GetSignature(meth);
+                result = Utility.GetSignature(meth, true);
                 cachedStrings.Add(meth, result);
             }
             
             sb.Append(result);
+        }
+
+        internal static void ClearCaches()
+        {
+            cachedStrings.Clear();
         }
         
     }
@@ -323,7 +336,7 @@ namespace Analyzer.Profiling
         private void ProcessInput(StackTrace stackTrace)
         {
             // Translate our input into the strings we will want to show the user
-            _ = StackTraceUtility.GetStackTraceString(stackTrace, out methods);
+            _ = StackTraceUtility.GetStackTraceString(stackTrace, false, out methods);
 
             Depth = methods.Count - 1;
 

@@ -15,6 +15,7 @@ namespace Analyzer
     {
         private Game game = null;
         public float TimeTillCleanup = -1;
+        public UInt64 counter = 0;
 
         public GameComponent_Analyzer(Game game)
         {
@@ -33,10 +34,18 @@ namespace Analyzer
 
         public override void GameComponentUpdate()
         {
+            counter++;
             // Display our logged messages that we may have recieved from other threads.
             ThreadSafeLogger.DisplayLogs();
-
-            if (TimeTillCleanup == -1) return;
+            
+            if (counter % 60 * 30 == 0)
+            {
+                Profiling.StackTraceUtility.ClearCaches();
+                Logging.Patch_Stacktraces.ClearCaches();
+            }
+            
+            if (Mathf.RoundToInt(TimeTillCleanup) == -1) 
+                return;
 
             if (Profiling.Analyzer.CurrentlyProfiling)
             {
@@ -50,7 +59,7 @@ namespace Analyzer
                 Profiling.Analyzer.Cleanup();
                 TimeTillCleanup = -1;
             }
-            
+
         }
 
     }
