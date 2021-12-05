@@ -4,6 +4,7 @@ using Verse;
 
 namespace Analyzer.Profiling
 {
+    [HotSwappable]
     public static class Panel_TopRow
     {
         public static string TimesFilter = string.Empty;
@@ -30,38 +31,37 @@ namespace Analyzer.Profiling
 
             TooltipHandler.TipRegion(row, Strings.top_refresh);
 
-            var searchbox = rect.LeftPartPixels(rect.width - 220f);
+            var searchbox = rect.LeftPartPixels(rect.width - 300f);
             searchbox.x += 25f;
 
             DubGUI.InputField(searchbox, Strings.top_search, ref TimesFilter, DubGUI.MintSearch);
-        //    searchbox.x = searchbox.xMax;
-        //    searchbox.width = 150;
-         //   GUI.color = Color.grey;
-         //   Widgets.Label(searchbox, MatchType);
-         //   GUI.color = Color.white;
 
-
-            // bit shitty and distracting, replace with a mini graph and or an entire page dedicated to garbage if it even matters realistically now which it probably doesn't so why bother aye just keep it clean
-            //row.x = searchbox.xMax + 5;
-            // row.width = 130f;
-            //Text.Anchor = TextAnchor.MiddleCenter;
-            //Widgets.FillableBar(row, Mathf.Clamp01(Mathf.InverseLerp(H_RootUpdate.LastMinGC, H_RootUpdate.LastMaxGC, H_RootUpdate.totalBytesOfMemoryUsed)), Textures.darkgrey);
-            //Widgets.Label(row, H_RootUpdate.GarbageCollectionInfo);
-            //TooltipHandler.TipRegion(row, Strings.top_gc_tip);
-           
+            rect.AdjustHorizonallyBy(rect.width - 250f);
+            
             Text.Anchor = TextAnchor.UpperLeft;
             Text.Font = GameFont.Tiny;
+            
+            var cat = GUIController.CurrentCategory == Category.Tick ? "tick" : "update";
+            var str = $"{ProfileController.updateAverage:F3}ms/{cat}";
 
-            row.width = 50f;
-            row.x = searchbox.xMax + 10;
-            Widgets.Label(row, $"FPS: {GUIElement_TPS.FPS}");
-            TooltipHandler.TipRegion(row, Strings.top_fps_tip);
-            row.x = row.xMax + 5;
-            row.width = 90f;
-            Widgets.Label(row, $"TPS: {GUIElement_TPS.TPS}({GUIElement_TPS.TPSTarget})");
-            TooltipHandler.TipRegion(row, Strings.top_tps_tip);
-            row.x = row.xMax + 5;
-            row.width = 30f;
+            var strLen = str.GetWidthCached();
+
+            var periodLen = rect.LeftPartPixels(130);
+            rect.AdjustHorizonallyBy(130);
+            
+            Widgets.Label(periodLen, str);
+
+
+            var tpsFpsRect = rect;
+            tpsFpsRect.width = 50f;
+            Widgets.Label(tpsFpsRect, $"FPS: {GUIElement_TPS.FPS}");
+            TooltipHandler.TipRegion(tpsFpsRect, Strings.top_fps_tip);
+            tpsFpsRect.x = tpsFpsRect.xMax + 5;
+            tpsFpsRect.width = 90f;
+            Widgets.Label(tpsFpsRect, $"TPS: {GUIElement_TPS.TPS}({GUIElement_TPS.TPSTarget})");
+            TooltipHandler.TipRegion(tpsFpsRect, Strings.top_tps_tip);
+            tpsFpsRect.x = tpsFpsRect.xMax + 5;
+            tpsFpsRect.width = 30f;
             Text.Font = GameFont.Medium;
         }
     }

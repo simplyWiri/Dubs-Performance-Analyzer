@@ -19,7 +19,8 @@ namespace Analyzer.Profiling
         Graph,
         Stats,
         Patches,
-        StackTrace
+        StackTrace,
+        Save
         /*, ChildProfilers */
     };
 
@@ -44,18 +45,16 @@ namespace Analyzer.Profiling
     public class Panel_BottomRow
     {
         public static GeneralInformation? currentProfilerInformation;
-        public static List<BottomRowPanel> panels = new List<BottomRowPanel>
-        {
-            new BottomRowPanel(ProfileInfoMode.Stats, 0, 250f),
-            new BottomRowPanel(ProfileInfoMode.Graph, 268, 900f)
-        };
 
         public static ProfileInfoMode ProfileInfoTab;
 
-        public static Panel_Graph graph = new Panel_Graph();
+        private static Panel_Graph graph = new Panel_Graph();
+        private static Panel_Patches patches = new Panel_Patches();
+        private static Panel_Save save = new Panel_Save();
+        private static Panel_StackTraces stacktraces = new Panel_StackTraces();
 
         static Rect tabRect = new Rect(0, 0, 150, 18);
-        public static void Drawtab(Rect r, ProfileInfoMode i, string lab)
+        public static void DrawTab(Rect r, ProfileInfoMode i, string lab)
         {
             r.height += 1;
             r.width += 1;
@@ -79,15 +78,25 @@ namespace Analyzer.Profiling
 
         public static void Draw(Rect rect)
         {
-            if (currentProfilerInformation == null || GUIController.CurrentProfiler != null && currentProfilerInformation.Value.method != GUIController.CurrentProfiler.meth)
+            if (GUIController.CurrentProfiler == null) return;
+            
+            if (currentProfilerInformation == null || currentProfilerInformation.Value.method != GUIController.CurrentProfiler.meth)
             {
+                ResetCurrentPanel();
                 GetGeneralSidePanelInformation();
+                
+                // are we in the patches category, but the method has no patches?
+                if (ProfileInfoTab == ProfileInfoMode.Patches && (currentProfilerInformation?.patches.Any() ?? false))
+                    ProfileInfoTab = ProfileInfoMode.Graph;
+                
+                // are we in the stack trace category, but the profiler has no method?
+                if (ProfileInfoTab == ProfileInfoMode.StackTrace && currentProfilerInformation?.method != null)
+                    ProfileInfoTab = ProfileInfoMode.Graph;
             }
 
             var statbox = rect;
             statbox.width = Panel_Tabs.width - 10;
-
-
+            
             var pRect = rect;
             pRect.x = statbox.xMax + 10;
             pRect.width -= statbox.xMax;
@@ -102,15 +111,23 @@ namespace Analyzer.Profiling
             Text.Font = GameFont.Tiny;
             Text.Anchor = TextAnchor.MiddleCenter;
 
-            tabRect.width = Mathf.Min(100f, pRect.width / 3f);
+            tabRect.width = Mathf.Min(150f, pRect.width / 3f);
 
             tabRect.x = pRect.x;
             tabRect.y = pRect.y - tabRect.height;
-            Drawtab(tabRect, ProfileInfoMode.Graph, "Graph");
+            DrawTab(tabRect, ProfileInfoMode.Graph, "Graph");
             tabRect.x = tabRect.xMax;
-            Drawtab(tabRect, ProfileInfoMode.Patches, "Patches");
-            tabRect.x = tabRect.xMax;
-            Drawtab(tabRect, ProfileInfoMode.StackTrace, "Stacktrace");
+            if (currentProfilerInformation?.patches.Any() ?? false)
+            {
+                DrawTab(tabRect, ProfileInfoMode.Patches, "Patches");
+                tabRect.x = tabRect.xMax;
+            }
+            if (currentProfilerInformation?.method != null)
+            {
+                DrawTab(tabRect, ProfileInfoMode.StackTrace, "Stacktrace");
+                tabRect.x = tabRect.xMax;
+            }
+            DrawTab(tabRect, ProfileInfoMode.Save, "Save and Compare");
             tabRect.x = tabRect.xMax;
 
             DubGUI.ResetFont();
@@ -118,10 +135,20 @@ namespace Analyzer.Profiling
             switch (ProfileInfoTab)
             {
                 case ProfileInfoMode.Graph: graph.Draw(pRect.ContractedBy(1)); break;
-                case ProfileInfoMode.Stats: Panel_Stats.DrawStats(pRect, currentProfilerInformation); break;
-                case ProfileInfoMode.Patches: Panel_Patches.Draw(pRect, currentProfilerInformation); break;
-                case ProfileInfoMode.StackTrace: Panel_StackTraces.Draw(pRect, currentProfilerInformation); break;
+                case ProfileInfoMode.Patches: patches.Draw(pRect, currentProfilerInformation); break;
+                case ProfileInfoMode.StackTrace: stacktraces.Draw(pRect, currentProfilerInformation); break;
+                case ProfileInfoMode.Save: save.Draw(pRect, currentProfilerInformation); break;
             }
+        }
+
+        private static void ResetCurrentPanel()
+        {
+            switch (ProfileInfoTab)
+            {
+                case ProfileInfoMode.Patches: patches.ResetState(currentProfilerInformation); break;
+                case ProfileInfoMode.StackTrace: stacktraces.ResetState(currentProfilerInformation); break;
+                case ProfileInfoMode.Save: save.ResetState(currentProfilerInformation); break;
+            } 
         }
 
         private static void GetGeneralSidePanelInformation()
@@ -153,15 +180,17 @@ namespace Analyzer.Profiling
 
             void CollectPatchInformation(string type, Patch patch)
             {
-                if (patch.owner == Modbase.Harmony.Id) return;
+                if (!Utility.IsNotAnalyzerPatch(patch.owner)) return;
 
-                var subPatch = new GeneralInformation();
-                subPatch.method = patch.PatchMethod;
-                subPatch.typeName = patch.PatchMethod.DeclaringType.FullName;
-                subPatch.methodName = patch.PatchMethod.Name;
-                subPatch.assname = patch.PatchMethod.DeclaringType.Assembly.FullName.Split(',').First();
-                subPatch.modName = GetModName(patch.PatchMethod.DeclaringType.Assembly.FullName);
-                subPatch.patchType = type;
+                var subPatch = new GeneralInformation
+                {
+                    method = patch.PatchMethod,
+                    typeName = patch.PatchMethod.DeclaringType.FullName,
+                    methodName = patch.PatchMethod.Name,
+                    assname = patch.PatchMethod.DeclaringType.Assembly.FullName.Split(',').First(),
+                    modName = GetModName(patch.PatchMethod.DeclaringType.Assembly.FullName),
+                    patchType = type
+                };
 
                 info.patches.Add(subPatch);
             }

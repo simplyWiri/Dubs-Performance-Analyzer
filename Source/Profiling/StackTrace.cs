@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
+using System.Threading;
 using HarmonyLib;
 using UnityEngine;
 using Verse;
@@ -31,21 +32,24 @@ namespace Analyzer.Profiling
                 var frames = new StackTrace(false).GetFrames();
                 if (frames == null) return;
 
-                var methods = frames
-                    .Select(Harmony.GetMethodFromStackframe);
+                var methods = frames.Select(Harmony.GetMethodFromStackframe).Select(m => m is MethodInfo mi ? Harmony.GetOriginalMethod(mi) ?? m : m);
                 
+                // find the first non harmony/dpa method in the stack trace and assoc the asm
+                // that method is from with the stack trace
                 foreach (var method in methods)
                 {
-                    var asm = method.DeclaringType?.Assembly;
+                    var asm = method.DeclaringType?.Assembly ?? method.ReflectedType?.Assembly;                    
                     if (asm == null) continue;
-                    if (asm == harmonyAssembly || asm == dpaAssembly) continue;
+                    
+                    if (asm.FullName.Contains("Harmony") || asm == dpaAssembly) continue;
                     
                     // we snipe this in another way
-                    if (method.Name.Contains("ApplyHarmonyPatches")) return;
+                    if (method.Name == "ApplyHarmonyPatches") return;
                     
                     StackTraceUtility.RegisterHarmonyId(id, asm);
                     return;
                 }
+
             }
             catch (Exception e) // lets be exceedingly careful.
             {
@@ -124,6 +128,8 @@ namespace Analyzer.Profiling
         public static Dictionary<long, StackTraceInformation> traces = new Dictionary<long, StackTraceInformation>();
         internal static Dictionary<MethodBase, string> cachedStrings = new Dictionary<MethodBase, string>();
         internal static Dictionary<string, Assembly> harmonyIds = new Dictionary<string, Assembly>();
+        internal static Dictionary<string, StackTrace> harmonyIds_d = new Dictionary<string, StackTrace>();
+
         internal static readonly Dictionary<Assembly, string> mods = new Dictionary<Assembly, string>();
 
         private static FieldInfo visualExceptionsHarmonyIds = null;
@@ -142,7 +148,7 @@ namespace Analyzer.Profiling
             
             // Manually add vanilla to our mod list
             mods.Add(typeof(Pawn).Assembly, "Rimworld");
-            
+
             // Manually add our harmony ids.
             harmonyIds.Add(Modbase.Harmony.Id, assembly);
             harmonyIds.Add(Modbase.StaticHarmony.Id, assembly);
@@ -173,18 +179,30 @@ namespace Analyzer.Profiling
             if (harmonyIds.TryGetValue(harmonyid, out var asm))
             {
                 mods.TryGetValue(asm, out var asmMod);
-                mods.TryGetValue(asm, out var assemblyMod);
+                mods.TryGetValue(assembly, out var assemblyMod);
 
-                var blameString = asmMod == assemblyMod
-                    ? $"This is a configuration issue with {asmMod}. Please report that they are instantiating harmony twice."
-                    : $"This is a Harmony ID configuration issue with {asmMod} and {assemblyMod}. Please report that they are instantiating harmony with the same ID.";
-                    
+                // Doesn't matter a whole lot
+                if (asmMod == assemblyMod)
+                {
+                    return;
+                }
                 
-                ThreadSafeLogger.Error($"The HarmonyID {harmonyid} has been loaded twice. It is associated with both: \n{asm.FullName} and {assembly.FullName}\n{blameString}");
+                var blameString = $"This is a Harmony ID configuration issue with {asmMod} and {assemblyMod}. Please report that they are instantiating harmony with the same ID.";
+                
+                ThreadSafeLogger.Error($"The HarmonyID {harmonyid} has been loaded twice. It is associated with both: \n{asm.FullName} and {assembly.FullName}\n{blameString}\n\nEnable verbose logging and restart to view the associated callstack(s)");
+                if (Settings.verboseLogging)
+                {
+                    ThreadSafeLogger.Error($"Initial Trace: {GetStackTraceString(harmonyIds_d[harmonyid], out _)}");
+                    ThreadSafeLogger.Error($"Current Trace: {GetStackTraceString(new StackTrace(1, false), out _)}");       
+                }
             }
             else
             {
                 harmonyIds.Add(harmonyid, assembly);
+                if (Settings.verboseLogging)
+                {
+                    harmonyIds_d.Add(harmonyid, new StackTrace(1, false));
+                }
             }
         }
         public static string ModFromPatchId(string pid)

@@ -11,39 +11,38 @@ using Verse;
 
 namespace Analyzer.Profiling
 {
-    class Panel_StackTraces
+    public class Panel_StackTraces : IBottomTabRow
     {
+        // called from the postfix which is applied which captures the stack trace, hence why it is static
         public static bool currentlyTracking = false;
         public static int currentTrackedStacktraces = 0;
-        public static int currentGoalTrackedTraces = 100_000;
-        public static long currentTrace = 0;
-        public static MethodInfo currentMethod = null;
-        public static MethodInfo postfix = typeof(Panel_StackTraces).GetMethod(nameof(StacktracePostfix), BindingFlags.Public | BindingFlags.Static);
-        private static StackTraceInformation CurrentTrace => (currentTrace == 0) ? null : StackTraceUtility.traces[currentTrace];
-        private static Vector2 scrollPosition = new Vector2(0, 0);
+        
+        private const int GOAL_TRACKED_TRACES = 100_000;
+        private long currentTrace = 0;
+        private MethodInfo currentMethod = null;
+        private MethodInfo postfix = typeof(Panel_StackTraces).GetMethod(nameof(StacktracePostfix), BindingFlags.Public | BindingFlags.Static);
+        private StackTraceInformation CurrentTrace => (currentTrace == 0) ? null : StackTraceUtility.traces[currentTrace];
+        private Vector2 scrollPosition = Vector2.zero;
 
-        private static void Reset(MethodInfo oldMethod)
+        public void ResetState(GeneralInformation? info)
         {
-            if (oldMethod == null) return; 
-
-            currentTrace = 0;
-            StackTraceUtility.Reset();
-            currentTrackedStacktraces = 0;
-            Modbase.Harmony.CreateProcessor(oldMethod).Unpatch(postfix);
             currentlyTracking = false;
+            currentTrace = 0;
+            currentTrackedStacktraces = 0;
+            currentMethod = null;
+            scrollPosition = Vector2.zero;
+
+            if (info == null) return; 
+            
+            StackTraceUtility.Reset();
+            Modbase.Harmony.CreateProcessor(info.Value.method).Unpatch(postfix);
         }
 
-        public static void Draw(Rect rect, GeneralInformation? info)
+        public void Draw(Rect rect, GeneralInformation? info)
         {
             if (info == null || info.Value.method == null) return;
-            var method = info.Value.method as MethodInfo;
-
-            if (currentMethod != method)
-            {
-                Reset(currentMethod);
-                currentMethod = method;
-            }
-
+            currentMethod = info.Value.method as MethodInfo;
+            
             var panelWidth = Mathf.Clamp(rect.width / 4, 0, 65);
             var leftHandPanel = rect.LeftPartPixels(panelWidth);
             rect.AdjustHorizonallyBy(panelWidth + 4f);
@@ -65,13 +64,12 @@ namespace Analyzer.Profiling
 
         // Vertical strip along the top of the UI informing the user of the current 
         // status of the patching
-        private static void DrawCurrentStatus(Rect statusBox, MethodInfo method)
+        private void DrawCurrentStatus(Rect statusBox, MethodInfo method)
         {
-            const string activeTemplate = "Tracing; {0} traces collected";
+            const string activeTemplate = "Tracing; {0:#,##0.##} traces collected";
             const string idleTemplate = "Idle";
-            const string inactiveTemplate = "Finished; {0} traces collected";
-
-            const string traceInformationTempate = "Calls: {0}, Mods Involved {1}  ";
+            const string inactiveTemplate = "Finished; {0:#,##0.##} traces collected";
+            const string traceInformationTempate = "Calls: {0:#,##0.##} ({1:P}), Mods Involved {2}  ";
             
             var status = "";
 
@@ -92,17 +90,15 @@ namespace Analyzer.Profiling
             var ct = CurrentTrace;
             if (ct == null) return;
 
-            var modsInvolved = StackTraceUtility.traces
-                .Sum(p => p.Value.Methods
-                    .Sum(st => st.Patches));
+            var modsInvolved = CurrentTrace.Methods.Sum(st => st.Patches);
             
-            status = string.Format(traceInformationTempate, ct.Count, modsInvolved);
+            status = string.Format(traceInformationTempate, ct.Count, ct.Count / (float)currentTrackedStacktraces, modsInvolved);
             Widgets.Label(statusBox.RightPartPixels(status.GetWidthCached()), status);
         }
 
         // Horizontal column which offers the option to
         // Enable, Disable, View Different Stacktrace, Summary
-        public static void DrawLeftColumn(Rect rect, MethodInfo method)
+        public void DrawLeftColumn(Rect rect, MethodInfo method)
         {
             var col = GUI.color;
             GUI.color = col * new Color(1f, 1f, 1f, 0.4f);
@@ -137,7 +133,7 @@ namespace Analyzer.Profiling
 
             Text.Font = ts;
         }
-        public static void DrawLine(ref Rect rect)
+        public void DrawLine(ref Rect rect)
         {
             rect.AdjustVerticallyBy(2);
             
@@ -148,7 +144,7 @@ namespace Analyzer.Profiling
             
             rect.AdjustVerticallyBy(2);
         }
-        private static void DrawEnableButton(Rect rect, MethodInfo method, string methodString)
+        private void DrawEnableButton(Rect rect, MethodInfo method, string methodString)
         {
             var tooltip = $"Enable stack trace profiling";
             var height = rect.height;
@@ -183,7 +179,7 @@ namespace Analyzer.Profiling
             }
         }
 
-        private static void DrawDisableButton(Rect rect, MethodInfo method)
+        private void DrawDisableButton(Rect rect, MethodInfo method)
         {
             var height = rect.height;
             if (height > 25f + Text.LineHeight)
@@ -214,7 +210,7 @@ namespace Analyzer.Profiling
                 GUI.color = Color.white;
         }
 
-        private static void DrawChangeTraceButton(Rect rect)
+        private void DrawChangeTraceButton(Rect rect)
         {
             var height = rect.height;
             if (height > 25f + Text.LineHeight)
@@ -251,7 +247,7 @@ namespace Analyzer.Profiling
             if (currentTrackedStacktraces == 0)
                 GUI.color = Color.white;
         }
-        private static void CalculateHeaders(List<StackTraceInformation> stackTraces, int maxDepth)
+        private void CalculateHeaders(List<StackTraceInformation> stackTraces, int maxDepth)
         {
             // Find first unique method at a given depth
             // from each callstack and display it 
@@ -292,7 +288,7 @@ namespace Analyzer.Profiling
             }
         }
 
-        private static void DrawStackTrace(Rect rect, StackTraceInformation stackTrace)
+        private void DrawStackTrace(Rect rect, StackTraceInformation stackTrace)
         {
             const string dummyLen = "XXXXXXXXXXXXXXXX"; // 16 chars length
             const string dummyAddition = "XXXX";
@@ -357,7 +353,7 @@ namespace Analyzer.Profiling
         // the string is larger than the rect, a tooltip will be drawn 
         // when the rect is hovered over, and the string will be trimmed
         // trimming occurs from the left if the `left` param is true.
-        private static void DrawStringWithin(Rect bounding, string value, bool left)
+        private void DrawStringWithin(Rect bounding, string value, bool left)
         {
             const int MAGIC = 5;
             value = value.Insert(left ? value.Length: 0, "  ");
@@ -383,7 +379,7 @@ namespace Analyzer.Profiling
         }
 
         // Intelligently trims a method string (params first)
-        private static string ClipToSize(string str, int charsToRemove, int newLen, bool left)
+        private string ClipToSize(string str, int charsToRemove, int newLen, bool left)
         {
             // No bracket, its not a method
             var lhsParams = str.FirstIndexOf(c => c == '(');
@@ -418,9 +414,12 @@ namespace Analyzer.Profiling
         {
             // The JIT doesn't seem to inline dynamically generated methods. So it should be safe to hardcode
             // the '2' skipframes, maybe in future updates this will not hold true and should be updated.
-            
-            if (++currentTrackedStacktraces < currentGoalTrackedTraces)
+
+            if (currentTrackedStacktraces < GOAL_TRACKED_TRACES)
+            {
                 StackTraceUtility.Add(new StackTrace(2, false));
+                currentTrackedStacktraces++;
+            }
             else currentlyTracking = false;
         }
 

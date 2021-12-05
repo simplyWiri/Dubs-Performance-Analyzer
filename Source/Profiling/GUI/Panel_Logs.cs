@@ -55,7 +55,7 @@ namespace Analyzer.Profiling
                     case SortBy.Percent: return Strings.logs_percent;
                     case SortBy.Name: return Strings.logs_name;
                     case SortBy.Total: return Strings.logs_total;
-                    case SortBy.CallsPu: return Strings.logs_callspu;
+                    case SortBy.CallsPu: return Strings.logs_callspu(GUIController.CurrentCategory == Category.Tick ? "Tick" : "Update");
                 }
 
                 return null;
@@ -75,7 +75,7 @@ namespace Analyzer.Profiling
                     case SortBy.Percent: return Strings.logs_percent_desc;
                     case SortBy.Name: return Strings.logs_name_desc;
                     case SortBy.Total: return Strings.logs_total_desc;
-                    case SortBy.CallsPu: return Strings.logs_callspu_desc;
+                    case SortBy.CallsPu: return Strings.logs_callspu_desc(GUIController.CurrentCategory == Category.Tick ? "Tick" : "Update");
                 }
 
                 return null;
@@ -93,7 +93,9 @@ namespace Analyzer.Profiling
                 case SortBy.Percent: return $" {log.percent * 100:0.0}% ";
                 case SortBy.Name: return "    " + log.label;
                 case SortBy.Total: return $" {log.total:0.000}ms ";
-                case SortBy.CallsPu: return $" {Mathf.CeilToInt(log.calls/log.entries).ToString("N0", CultureInfo.InvariantCulture)} ";
+                case SortBy.CallsPu:
+                    var num = log.calls / log.entries;
+                    return num < 1 ? $" {num:F3}" : $" {(int)Math.Round(num)}";
             }
 
             return "";

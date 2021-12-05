@@ -16,13 +16,18 @@ namespace Analyzer.Profiling
     {
         public static Dictionary<string, Profiler> profiles = new Dictionary<string, Profiler>();
 
-#if DEBUG
         private static bool midUpdate = false;
-#endif
+
         private static float deltaTime = 0.0f;
         public static float updateFrequency => 1 / Settings.updatesPerSecond; // how many ms per update (capped at every 0.05ms)
 
         public static Dictionary<string, Profiler> Profiles => profiles;
+
+        private static Stopwatch rootProf = new Stopwatch();
+        private static float prevSample = 0.0f;
+        private static int hits = 0;
+        public static float updateAverage;
+        
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Profiler Start(string key, Func<string> GetLabel = null, Type type = null, MethodBase meth = null)
@@ -46,20 +51,26 @@ namespace Analyzer.Profiling
         }
 
         // Mostly here for book keeping, optimised out of a release build.
-        [Conditional("DEBUG")]
         public static void BeginUpdate()
         {
-#if DEBUG
             if (Analyzer.CurrentlyPaused) return;
+            
+            rootProf.Start();
 
-            if (midUpdate) ThreadSafeLogger.Error("[Analyzer] Attempting to begin new update cycle when the previous update has not ended");
+            if (midUpdate)
+            {
+                ThreadSafeLogger.Error("[CRITICAL] Caught analyzer trying to begin a new update cycle before finishing the previous one.");
+            }
+
             midUpdate = true;
-#endif
         }
 
         public static void EndUpdate()
         {
             if (Analyzer.CurrentlyPaused) return;
+            
+            rootProf.Stop();
+            hits++;
 
             Analyzer.UpdateCycle(); // Update all our profilers, record measurements
 
@@ -69,9 +80,16 @@ namespace Analyzer.Profiling
                 Analyzer.FinishUpdateCycle(); // Process the information for all our profilers.
                 deltaTime -= updateFrequency;
             }
-#if DEBUG
+
+            if (Time.time - prevSample >= 1)
+            {
+                prevSample = Time.time;
+                updateAverage = (rootProf.ElapsedMilliseconds / (float)hits);
+                hits = 0;
+                rootProf.Reset();
+            }
+            
             midUpdate = false;
-#endif
         }
     }
 }
