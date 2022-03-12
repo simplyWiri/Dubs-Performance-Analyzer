@@ -330,7 +330,7 @@ namespace Analyzer.Profiling
                         options.Add(new FloatMenuOption("Current", act));
                     }
                     Find.WindowStack.Add(new FloatMenu(options));
-                }
+                }   
             }
             
             SelectEntry(first, true);

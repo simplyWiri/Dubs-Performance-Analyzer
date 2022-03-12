@@ -82,8 +82,12 @@ namespace Analyzer.Profiling
             
             if (currentProfilerInformation == null || currentProfilerInformation.Value.method != GUIController.CurrentProfiler.meth)
             {
-                ResetCurrentPanel();
-                GetGeneralSidePanelInformation();
+                if ( ProfileInfoTab != ProfileInfoMode.Save)
+                {
+                    ResetCurrentPanel();
+                    GetGeneralSidePanelInformation();
+                }
+
                 
                 // are we in the patches category, but the method has no patches?
                 if (ProfileInfoTab == ProfileInfoMode.Patches && (currentProfilerInformation?.patches.Any() ?? false))
