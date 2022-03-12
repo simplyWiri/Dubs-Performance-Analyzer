@@ -189,11 +189,11 @@ namespace Analyzer.Profiling
                 
                 var blameString = $"This is a Harmony ID configuration issue with {asmMod} and {assemblyMod}. Please report that they are instantiating harmony with the same ID.";
                 
-                ThreadSafeLogger.Error($"The HarmonyID {harmonyid} has been loaded twice. It is associated with both: \n{asm.FullName} and {assembly.FullName}\n{blameString}\n\nEnable verbose logging and restart to view the associated callstack(s)");
+                ThreadSafeLogger.Message($"The HarmonyID {harmonyid} has been loaded twice. It is associated with both: \n{asm.FullName} and {assembly.FullName}\n{blameString}\n\nEnable verbose logging and restart to view the associated callstack(s)");
                 if (Settings.verboseLogging)
                 {
-                    ThreadSafeLogger.Error($"Initial Trace: {GetStackTraceString(harmonyIds_d[harmonyid], out _)}");
-                    ThreadSafeLogger.Error($"Current Trace: {GetStackTraceString(new StackTrace(1, false), out _)}");       
+                    ThreadSafeLogger.Message($"Initial Trace: {GetStackTraceString(harmonyIds_d[harmonyid], out _)}");
+                    ThreadSafeLogger.Message($"Current Trace: {GetStackTraceString(new StackTrace(1, false), out _)}");       
                 }
             }
             else

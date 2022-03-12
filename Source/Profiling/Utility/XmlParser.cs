@@ -45,11 +45,17 @@ namespace Analyzer.Profiling
                     {
                         case "methods":
                         case "method":
-                            foreach (XmlNode method in child.ChildNodes)
-                                meths.Add(ParseMethod(method.InnerText)); break;
+                            foreach (XmlNode method in child.ChildNodes) {
+                                var meth = ParseMethod(method.InnerText);
+                                if (meth is not null) {
+                                    meths.Add(meth);
+                                }
+                            }
+
+                            break;
                         case "types":
                         case "type":
-                            foreach (XmlNode type in child.ChildNodes)
+                            foreach (XmlNode type in child.ChildNodes) 
                                 meths.AddRange(ParseTypeMethods(type.InnerText)); break;
                         case "nestedtype":
                         case "nestedtypes":
@@ -61,7 +67,7 @@ namespace Analyzer.Profiling
                     }
                 }
 
-                Type myType = DynamicTypeBuilder.CreateType(node.Name, meths);
+                var myType = DynamicTypeBuilder.CreateType(node.Name, meths);
 
                 GUIController.Tab(Category.Modder).entries.Add(Entry.Create(myType.Name, Category.Modder, myType, false, true), myType);
             }
@@ -72,14 +78,16 @@ namespace Analyzer.Profiling
             return AccessTools.Method(str);
         }
 
-        private static IEnumerable<MethodInfo> ParseTypeMethods(string str)
-        {
-            return Utility.GetTypeMethods(AccessTools.TypeByName(str));
+        private static IEnumerable<MethodInfo> ParseTypeMethods(string str) {
+            var type = AccessTools.TypeByName(str);
+            return type is null ? Enumerable.Empty<MethodInfo>() : Utility.GetTypeMethods(type);
         }
 
         private static IEnumerable<MethodInfo> ParseSubTypeTypeMethods(string str)
         {
             var type = AccessTools.TypeByName(str);
+            if (type == null) 
+                yield break;
 
             foreach(var subType in type.GetNestedTypes())
                 foreach(var method in Utility.GetTypeMethods(subType))

@@ -96,6 +96,53 @@ namespace Analyzer.Profiling
             lhsStats = null;
             rhsStats = null;
         }
+
+        private int EntryPerCall(Profiler prof, int idx) {
+            var len = prof.hits[prevIdx];
+            len = Mathf.Min(file.header.targetEntries - file.header.entries, len);
+
+            if (len == 0) {
+                return idx;
+            }
+            Array.Fill(file.times, prof.times[prevIdx] / prof.hits[prevIdx], idx, len);
+
+            idx += len; 
+            file.header.entries += len;
+
+            return idx;
+        }
+
+        private int EntriesWithValues(Profiler prof, int idx) {
+            if (prof.hits[prevIdx] <= 0) {
+                return idx;
+            }
+            
+            file.times[idx] = prof.times[prevIdx];
+            file.calls[idx] = prof.hits[prevIdx];
+
+            idx++;
+            
+            return idx;
+        }
+
+        private int DefaultValueImpl(Profiler prof, int idx) {
+            var len = (int)((prof.currentIndex < prevIdx)
+                ? prof.currentIndex - prevIdx
+                : Profiler.RECORDS_HELD - prevIdx);
+                    
+            len = Math.Min(file.header.targetEntries - file.header.entries, len);
+            if (len == 0) {
+                return idx;
+            };
+
+            Array.Copy(prof.times, (int)prevIdx, file.times, idx, len);
+            Array.Copy(prof.hits, (int)prevIdx, file.calls, idx, len);
+
+            idx += len;
+            prevIdx += (uint)len;
+            
+            return idx;
+        }
         
         private string GetStatus()
         {
@@ -109,7 +156,7 @@ namespace Analyzer.Profiling
                 : $"Collecting Entries {ents}/{target} ({(ents / (float)target) * 100:F2}%)";
         }
 
-        private void UpdateFile()
+        private void UpdateFile(Func<Profiler, int, int> function)
         {
             if (file.header.entries >= file.header.targetEntries) return;
             
@@ -119,38 +166,8 @@ namespace Analyzer.Profiling
             while (prevIdx != prof.currentIndex)
             {
                 if (file.header.entries >= file.header.targetEntries) return;
-                
-                if (file.header.entryPerCall)
-                {
-                    var len = prof.hits[prevIdx];
-                    len = Mathf.Min(file.header.targetEntries - file.header.entries, len);
 
-                    if (len == 0) continue;
-                    Array.Fill(file.times, prof.times[prevIdx] / (double)prof.hits[prevIdx], idx, len);
-
-                    idx += len;
-                    file.header.entries += len;
-                } else if (file.header.onlyEntriesWithValues && prof.hits[prevIdx] > 0)
-                {
-                    file.times[idx] = prof.times[prevIdx];
-                    file.calls[idx] = prof.hits[prevIdx];
-
-                    idx++;
-                } else
-                {
-                    var len = (int)((prof.currentIndex < prevIdx)
-                        ? prof.currentIndex - prevIdx
-                        : Profiler.RECORDS_HELD - prevIdx);
-                    
-                    len = Math.Min(file.header.targetEntries - file.header.entries, len);
-                    if (len == 0) continue;
-
-                    Array.Copy(prof.times, (int)prevIdx, file.times, idx, len);
-                    Array.Copy(prof.hits, (int)prevIdx, file.calls, idx, len);
-
-                    idx += len;
-                    prevIdx += (uint)len;
-                }
+                idx = function(prof, idx);
 
                 prevIdx++;
                 prevIdx %= Profiler.RECORDS_HELD;
@@ -162,8 +179,13 @@ namespace Analyzer.Profiling
         {
             if (GUIController.CurrentProfiler == null) return;
 
-            if (file != null)
-                UpdateFile();
+            if (file != null) {
+                UpdateFile(file.header.entryPerCall 
+                    ? EntryPerCall 
+                    : file.header.onlyEntriesWithValues
+                        ? EntriesWithValues 
+                        : DefaultValueImpl);
+            }
 
             var colWidth = Mathf.Max(300, r.width / 3);
             var columnRect = r.RightPartPixels(colWidth);
