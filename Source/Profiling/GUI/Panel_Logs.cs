@@ -460,6 +460,25 @@ namespace Analyzer.Profiling
             if (GUIController.CurrentEntry.type != typeof(H_HarmonyTranspilersInternalMethods))
                 yield return new FloatMenuOption("Profile the internal methods of", () => Utility.PatchInternalMethod(meth, GUIController.CurrentCategory));
 
+
+
+            if (meth != null) {
+                yield return new FloatMenuOption("Copy", () => {
+                    var te = new TextEditor { text = Utility.GetSignature(meth, false) };
+                    te.SelectAll();
+                    te.Copy();
+                });
+                
+                yield return new FloatMenuOption("Save to Custom Tick", () => {
+                    Settings.SavedPatches_Tick.Add(string.Concat(meth.DeclaringType, ":", meth.Name));
+                    Modbase.Settings.Write();    
+                });
+                yield return new FloatMenuOption("Save to Custom Update", () => {
+                    Settings.SavedPatches_Update.Add(string.Concat(meth.DeclaringType, ":", meth.Name));
+                    Modbase.Settings.Write();    
+                });
+            }
+            
             // This part is WIP - it would require the ability to change the tab a method is active in on the fly
             // which is possible (with a transpiler to the current transpiler) but it would likely end up being
             // quite ugly, and I'd rather give a little more thought to the problem
