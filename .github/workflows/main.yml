@@ -7,7 +7,7 @@ on:
   push:
     branches:
       - master
-      - additions
+      - wip
     paths-ignore:
       - 'README.md'
     tags-ignore:
