@@ -96,8 +96,12 @@ namespace Analyzer.Profiling
             return int.Parse(suffix);
         }
 
-        private static string FinalFileNameFor(string str) => Path.Combine(GetFileLocation, SanitizeFileName(str) + '-' + ( GetFileNumber(PreviousEntriesFor(str).MaxBy(fh => GetFileNumber(fh.info) + 1).info) + 1)  + ".data");
-
+        private static string FinalFileNameFor(string str) {
+            var prevEntries = PreviousEntriesFor(str).ToList();
+            var number = prevEntries.Count == 0 ? 0 : GetFileNumber(prevEntries.MaxBy(fh => GetFileNumber(fh.info) + 1).info) + 1;
+            return Path.Combine(GetFileLocation, SanitizeFileName(str) + '-' + number  + ".data");
+        }
+        
         private static List<FileWithHeader> cachedFiles = new List<FileWithHeader>();
         private static long lastFileAccess = 0;
         private static bool changed = true;
