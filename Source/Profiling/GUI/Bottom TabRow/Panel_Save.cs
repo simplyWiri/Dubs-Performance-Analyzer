@@ -2,21 +2,16 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text;
-using RimWorld;
 using UnityEngine;
 using Verse;
 
 namespace Analyzer.Profiling
 {
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
-    public class HotSwappableAttribute : Attribute
-    {
-    }
-
     class Row
     {
+        private static Color[] colours = { Color.red, Color.white, Color.green };
+        
         public string name;
         public Func<LogStats, double> getDouble = null;
         public Func<LogStats, int> getInt = null;
@@ -35,27 +30,101 @@ namespace Analyzer.Profiling
             getDouble = gd;
             shouldColour = sC;
         }
-
+        
         public bool IsInt() => getInt is not null;
+        
+        public string Get(LogStats stats) {
+            return IsInt() ? getInt(stats).ToString() : $"{getDouble(stats):F3}";
+        }
 
-        public int Int(LogStats stats) => getInt(stats);
-        public double Double(LogStats stats) => getDouble(stats);
+        // returns (delta, % diff)
+        public (double, double) Delta(LogStats lhs, LogStats rhs) {
+            if (IsInt()) {
+                var lVal = getInt(lhs);
+                var rVal = getInt(rhs);
+                return (rVal - lVal, ( (rVal - lVal) / (double) lVal ) * 100);
+            } else {
+                var lVal = getDouble(lhs);
+                var rVal = getDouble(rhs);
+                return (rVal - lVal, ( (rVal - lVal) / lVal ) * 100);
+            }
+        }
+
+        public void DrawDeltaString(Rect rect, LogStats lhs, LogStats rhs) {
+            var (delta, perc) = Delta(lhs, rhs);
+            var sign = (delta > 0) ? "+" : "";
+            
+            var color = perc switch
+            {
+                < -2.5 => colours[2],
+                > 2.5  => colours[0],
+                _      => colours[1],
+            };
+            
+            GUI.color = color;
+            Widgets.Label(rect, $"{sign}{delta:F3} ( {sign}{perc:F2}% )");
+            GUI.color = colours[1];
+        }
 
     }
+
+    class SidedEntry {
+
+        protected bool Equals(SidedEntry other) {
+            return Equals(file.Name, other.file.Name);
+        }
+
+        public override bool Equals(object obj) {
+            if (ReferenceEquals(null, obj)) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj.GetType() != this.GetType()) return false;
+            return Equals((SidedEntry)obj);
+        }
+
+        public override int GetHashCode() { 
+            unchecked {
+                var hashCode = (data != null ? data.GetHashCode() : 0);
+                hashCode = (hashCode * 397) ^ (stats != null ? stats.GetHashCode() : 0);
+                hashCode = (hashCode * 397) ^ (file != null ? file.GetHashCode() : 0);
+                return hashCode;
+            }
+        }
+
+        public EntryFile data;
+        public LogStats stats;
+        public FileInfo file;
+
+        public SidedEntry(FileInfo file) {
+            this.file = file;
+            this.data = FileUtility.ReadFile(file);
+            this.stats = LogStats.GatherStats(data);
+        }
+
+        public static bool operator ==(SidedEntry lhs, SidedEntry rhs) {
+            if (ReferenceEquals(lhs, null)) {
+                return ReferenceEquals(rhs, null);
+            } 
+            return !ReferenceEquals(rhs, null) && lhs.Equals(rhs);
+        }
+
+        public static bool operator !=(SidedEntry lhs, SidedEntry rhs) {
+            return !(lhs == rhs);
+        }
+    }
     
-    
-    
-    [HotSwappable]
     public class Panel_Save : IBottomTabRow
     {
         private EntryFile file = null;
         private uint prevIdx = 0;
+        private string quantityStr = null;
+        private bool flushAtMaxEntries = false;
 
-        private EntryFile lhsEntry = null;
-        private EntryFile rhsEntry = null;
+        private FileHeader curHeader = FileHeader.Default;
 
-        private LogStats lhsStats = null;
-        private LogStats rhsStats = null;
+        private SidedEntry lhs = null;
+        private SidedEntry rhs = null;
+
+        private Vector2 fileScrollPos = Vector2.zero;
 
         private static List<Row> rows = new List<Row>()
         {
@@ -71,30 +140,15 @@ namespace Analyzer.Profiling
             new Row("Max Calls/Update", (stats) => stats.HighestCalls),
         };
 
-        private FileHeader curHeader = new FileHeader()
-        {
-            MAGIC = FileUtility.ENTRY_FILE_MAGIC, // used to verify the file has not been corrupted on disk somehow.
-            scribingVer = FileUtility.SCRIBE_FILE_VER,
-            targetEntries = Profiler.RECORDS_HELD,
-            name = " " // default to an empty name
-        };
         
         public void ResetState(GeneralInformation? _)
         {
             file = null;
             prevIdx = 0;
-            curHeader = new FileHeader()
-            {
-                MAGIC = FileUtility.ENTRY_FILE_MAGIC, // used to verify the file has not been corrupted on disk somehow.
-                scribingVer = FileUtility.SCRIBE_FILE_VER,
-                targetEntries = Profiler.RECORDS_HELD,
-                name = " " // default to an empty name
-            };
-            
-            lhsEntry = null;
-            rhsEntry = null;
-            lhsStats = null;
-            rhsStats = null;
+            curHeader = FileHeader.Default;
+
+            lhs = null;
+            rhs = null;
         }
 
         private int EntryPerCall(Profiler prof, int idx) {
@@ -106,8 +160,8 @@ namespace Analyzer.Profiling
             }
             Array.Fill(file.times, prof.times[prevIdx] / prof.hits[prevIdx], idx, len);
 
-            idx += len; 
-            file.header.entries += len;
+            idx += len;
+            prevIdx++;
 
             return idx;
         }
@@ -121,12 +175,13 @@ namespace Analyzer.Profiling
             file.calls[idx] = prof.hits[prevIdx];
 
             idx++;
+            prevIdx++;
             
             return idx;
         }
 
         private int DefaultValueImpl(Profiler prof, int idx) {
-            var len = (int)((prof.currentIndex < prevIdx)
+            var len = (int)(prof.currentIndex >= prevIdx
                 ? prof.currentIndex - prevIdx
                 : Profiler.RECORDS_HELD - prevIdx);
                     
@@ -146,39 +201,39 @@ namespace Analyzer.Profiling
         
         private string GetStatus()
         {
-            if (file == null) return "Idle";
-
+            if (file == null) return "";
+        
             var ents = file.header.entries;
             var target = file.header.targetEntries;
             
-            return ents == target 
-                ? "Completed Collection" 
-                : $"Collecting Entries {ents}/{target} ({(ents / (float)target) * 100:F2}%)";
+            return $"{ents}/{target} ({(ents / (float)target) * 100:F2}%)";
         }
 
         private void UpdateFile(Func<Profiler, int, int> function)
         {
-            if (file.header.entries >= file.header.targetEntries) return;
+            if (file.header.entries >= file.header.targetEntries) {
+                if (flushAtMaxEntries) {
+                    Flush();
+                }
+                return;
+            };
             
             var prof = GUIController.CurrentProfiler;
             var idx = file.header.entries;
             
-            while (prevIdx != prof.currentIndex)
+            while (prevIdx != prof.currentIndex && file.header.entries < file.header.targetEntries)
             {
-                if (file.header.entries >= file.header.targetEntries) return;
-
                 idx = function(prof, idx);
 
-                prevIdx++;
                 prevIdx %= Profiler.RECORDS_HELD;
                 file.header.entries = idx;
             }
         }
 
-        public void Draw(Rect r, GeneralInformation? info)
+        public void Draw(Rect r, GeneralInformation? _)
         {
             if (GUIController.CurrentProfiler == null) return;
-
+            
             if (file != null) {
                 UpdateFile(file.header.entryPerCall 
                     ? EntryPerCall 
@@ -186,22 +241,21 @@ namespace Analyzer.Profiling
                         ? EntriesWithValues 
                         : DefaultValueImpl);
             }
-
-            var colWidth = Mathf.Max(300, r.width / 3);
+            
+            var colWidth = Mathf.Min(250, r.width / 3);
             var columnRect = r.RightPartPixels(colWidth);
             r.width -= colWidth;
             
-            DrawColumn(columnRect);
-            
-            var top = r.TopPartPixels(20f);
-            r.AdjustVerticallyBy(20f);
-            
-            DrawTopRow(top);
+            DrawOptionsColumn(columnRect);
+            DrawComparison(r);
+        }
 
-            if (FileUtility.PreviousEntriesFor(GUIController.CurrentProfiler.label).Any())
-            {
-                DrawComparison(r);
-            }
+        private void Flush() {
+            FileUtility.WriteFile(file);
+                
+            file = null;
+            curHeader.entries = 0;
+            curHeader.name = "";
         }
 
         //              [ Left File ]       [ Right File ]     [ Delta ]
@@ -209,77 +263,54 @@ namespace Analyzer.Profiling
         // Time Mean       0.037ms             0.031ms        -0.006ms ( - 16% )
         private void DrawComparison(Rect r)
         {
-            var topPart = r.TopPartPixels(50f);
+            if (lhs == null || rhs == null) {
+                return;
+            }
             
-            // have not selected any entries to compare.
-            if (!DrawSelectEntries(topPart)) return;
-            
-            r.AdjustVerticallyBy(50f);
-
             var anchor = Text.Anchor;
-            var colours = new Color[] { Color.red, GUI.color, Color.green };
-
-            var headerRect = r.TopPartPixels(30f);
-            r.AdjustVerticallyBy(30f);
-            Text.Anchor = TextAnchor.MiddleCenter;
             
-            // [     Row     ]  [   Left Stats   ]  [ Right Stats ] [    Delta    ]
-            DubGUI.Heading(headerRect.LeftHalf().LeftHalf(), "Row");
-            DubGUI.Heading(headerRect.LeftHalf().RightHalf(), "Left Stats");
-            DubGUI.Heading(headerRect.RightHalf().LeftHalf(), "Right Stats");
-            DubGUI.Heading(headerRect.RightHalf().RightHalf(), "Delta");
+            var nameColWidth = "  Max Calls/Update".GetWidthCached() + 5f;
+            var restWidth = r.width - nameColWidth;
             
-            GUI.color *= new Color(1f, 1f, 1f, 0.4f);
-            Widgets.DrawLineHorizontal(r.x, r.y, r.width);
-            GUI.color = Color.white;
-
-            Text.Anchor = anchor;
-                
             for (int i = 0; i < 4; i++)
             {
-                if (i > 0)
-                    Text.Anchor = TextAnchor.MiddleCenter;
+                var column = i switch {
+                    0 => new Rect(r.x, r.y, nameColWidth, r.height),
+                    3 => new Rect(r.x + nameColWidth + restWidth * 4 / 7, r.y, restWidth * 3 / 7, r.height),
+                    _ => new Rect((r.x + nameColWidth) + (i - 1) * (restWidth * (2 / 7.0f)), r.y, (restWidth * (2 / 7.0f)), r.height)
+                };
                 
-                var column = new Rect(r.x + i * (r.width / 4.0f), r.y, r.width / 4.0f, r.height);
+                Text.Anchor = TextAnchor.MiddleCenter;
+
+                switch (i) {
+                    case 0: DubGUI.Heading(column.PopTopPartPixels(30f), "Row");  break;
+                    case 1: DubGUI.Heading(column.PopTopPartPixels(30f), "Left");  break;
+                    case 2: DubGUI.Heading(column.PopTopPartPixels(30f), "Right");  break;
+                    case 3: DubGUI.Heading(column.PopTopPartPixels(30f), "Delta");  break;
+                }
+
+                GUI.color = Color.gray;
+                Widgets.DrawLineHorizontal(column.x, column.y, column.width);
+                GUI.color = Color.white;
+                
+                Text.Anchor = TextAnchor.MiddleLeft;
+
+                if (i > 0) {
+                    Text.Anchor = TextAnchor.MiddleCenter;
+                }
 
                 var rect = column.TopPartPixels(Text.LineHeight + 4f);
-                foreach (var row in rows)
-                {
-                    // i is the current column, 0 = name, 1 = lhs, 2 = rhs, 3 = delta
-                    switch (i)
-                    {
+                int idx = 0;
+                foreach (var row in rows)  {
+                    if (++idx % 2 == 0) {
+                        Widgets.DrawLightHighlight(rect);
+                    }
+                    
+                    switch (i)  {
                         case 0 : Widgets.Label(rect, "  " + row.name); break;
-                        case 1 : Widgets.Label(rect, row.IsInt() ? row.Int(lhsStats).ToString() : $"{row.Double(lhsStats):F5}"); break;
-                        case 2 : Widgets.Label(rect, row.IsInt() ? row.Int(rhsStats).ToString() : $"{row.Double(rhsStats):F5}"); break;
-                        case 3 :
-                            
-                            var sb = new StringBuilder();
-                            var sign = "";
-                            double delta, dP = 0;
-                            if (row.IsInt())
-                            {
-                                delta = row.Int(rhsStats) - row.Int(lhsStats);
-                                dP = (delta / (double)row.Int(lhsStats)) * 100;
-                            } else {                                
-                                delta = row.Double(rhsStats) - row.Double(lhsStats);
-                                dP = (delta / row.Double(lhsStats)) * 100;
-                            }
-                            
-                            sign = (delta > 0) ? "+" : "";
-                            sb.Append($"{sign}{delta:F5} ( {sign}{dP:F2}% )");
-
-                            var color = dP switch
-                            {
-                                < -2.5 => colours[2],
-                                > 2.5 => colours[0],
-                                _ => colours[1],
-                            };
-                            
-                            GUI.color = color;
-                            Widgets.Label(rect, sb.ToString());
-                            GUI.color = colours[1];
-
-                            break;
+                        case 1 : Widgets.Label(rect, row.Get(lhs.stats)); break;
+                        case 2 : Widgets.Label(rect, row.Get(rhs.stats)); break;
+                        case 3 : row.DrawDeltaString(rect, lhs.stats, rhs.stats); break;
                     }
                     
                     column.AdjustVerticallyBy(Text.LineHeight + 4f);
@@ -289,90 +320,7 @@ namespace Analyzer.Profiling
             Text.Anchor = anchor;
         }
 
-        public void DrawTopRow(Rect r)
-        {
-            var statusString = "Status: " + GetStatus();
-            Widgets.Label(r.LeftPartPixels(statusString.GetWidthCached()), statusString);
-            var previousEntriesString = "Previous Saved Entries: " + FileUtility.PreviousEntriesFor(GUIController.CurrentProfiler.label).Count();
-            Widgets.Label(r.RightPartPixels(previousEntriesString.GetWidthCached()), previousEntriesString);
-        }
-
-        private bool DrawSelectEntries(Rect rect)
-        {
-            var buttonsRect = rect.LeftPartPixels(rect.width - ( "Compare".GetWidthCached() * 2)); 
-            var first = buttonsRect.LeftHalf();
-            var second = buttonsRect.RightHalf();
-            var third = rect.RightPartPixels("Compare".GetWidthCached() * 1.6f);
-
-            void SelectEntry(Rect rect, bool left)
-            {
-                var loc = left ? "Left" : "Right";
-                var name = $"{loc} File: {(left ? lhsEntry : rhsEntry)?.header.Name ?? "not selected"}";
-                if (Widgets.ButtonText(rect.ContractedBy(4f), name))
-                {
-                    var options = new List<FloatMenuOption>();
-                    foreach (var entry in FileUtility.PreviousEntriesFor(GUIController.CurrentProfiler.label))
-                    {
-                        var header = FileUtility.ReadHeader(entry);
-
-                        var act = left 
-                            ? (Action) ( () => lhsEntry = FileUtility.ReadFile(entry) ) 
-                            : (Action) ( () => rhsEntry = FileUtility.ReadFile(entry) );
-                        
-                        options.Add(new FloatMenuOption(header.Name, act)); 
-                    }
-
-                    if (file != null && file.header.entries == file.header.targetEntries)
-                    {
-                        var act = left 
-                            ? (Action) ( () => lhsEntry = file ) 
-                            : (Action) ( () => rhsEntry = file );
-                        options.Add(new FloatMenuOption("Current", act));
-                    }
-                    Find.WindowStack.Add(new FloatMenu(options));
-                }   
-            }
-            
-            SelectEntry(first, true);
-            SelectEntry(second, false);
-            if (Widgets.ButtonText(third.ContractedBy(4f), "Compare"))
-            {
-                if (lhsEntry is null || rhsEntry is null)
-                {
-                    ThreadSafeLogger.Error("One of the comparisons was null, waiting for valid inputs");
-                    return false;
-                }
-                
-                lhsStats = LogStats.GatherStats(lhsEntry.calls, lhsEntry.times, lhsEntry.header.entries);
-                rhsStats = LogStats.GatherStats(rhsEntry.calls, rhsEntry.times, rhsEntry.header.entries);
-            }
-
-            return !(lhsStats is null || rhsStats is null);
-        }
-
-        public void CheckValidHeader()
-        {
-            if (curHeader.MAGIC != FileUtility.ENTRY_FILE_MAGIC)
-            {
-                ThreadSafeLogger.Error($"headers magic value was {curHeader.MAGIC} not the expected {FileUtility.ENTRY_FILE_MAGIC} - correcting");
-                curHeader.MAGIC = FileUtility.ENTRY_FILE_MAGIC;
-            }
-
-            if (curHeader.entries > 0)
-            {
-                ThreadSafeLogger.Error($"headers entries value was not 0, resetting");
-                curHeader.entries = 0;
-            }
-
-            if (curHeader.name == null)
-            {
-                ThreadSafeLogger.Error("headers name value was null, should have been ' ', resetting");
-                curHeader.name = " ";
-            }
-        }
-        
-        
-        public void DrawColumn(Rect r)
+        public void DrawOptionsColumn(Rect r)
         {
             var color = GUI.color;
             GUI.color = color * new Color(1f, 1f, 1f, 0.4f);
@@ -381,68 +329,209 @@ namespace Analyzer.Profiling
 
             r = r.ContractedBy(2);
             
-            var s = new Listing_Standard();
-            s.Begin(r);
-            
-            DubGUI.Heading(s, "Options");
-            s.GapLine(2f);
-            s.CheckboxLabeled("Only Entries with Values", ref curHeader.onlyEntriesWithValues);
-            s.CheckboxLabeled("One Entry per Call", ref curHeader.entryPerCall);
-            float val = curHeader.targetEntries;
-            DubGUI.LabeledSliderFloat(s, $"Target Entries", ref val, 50, 50_000);
-            curHeader.targetEntries = Mathf.RoundToInt(val);
-            DubGUI.InputField(s.GetRect(30), "Custom Name", ref curHeader.name, ShowName: true);
+            r.AdjustHorizonallyBy(7f);
 
-            if (s.ButtonText("Copy Settings From"))
-            {
-                var options = new List<FloatMenuOption>();
-                foreach (var entry in FileUtility.PreviousEntriesFor(GUIController.CurrentProfiler.label))
-                {
-                    var header = FileUtility.ReadHeader(entry);
-                    options.Add(new FloatMenuOption(header.Name, () => curHeader = header));
-                }
-                Find.WindowStack.Add(new FloatMenu(options));
+            var buttonRowRect = r.PopTopPartPixels(42f);
+            var rowPadding = 7f;
+            var iconSize = 30f;
+
+            var recordStr = "Record";
+            var recordStrLen = recordStr.GetWidthCached();
+            var recordButtonRect = buttonRowRect.PopLeftPartPixels(recordStrLen + rowPadding * 2);
+            buttonRowRect.AdjustHorizonallyBy(rowPadding);
+
+            var canRecord = file == null && curHeader.targetEntries >= 0;
+            if ( ! canRecord )  {
+                GUI.color = Color.gray;
             }
             
-            s.GapLine(12f);
-
-            if (s.ButtonText("Start Collecting Entries"))
-            {
+            if (Widgets.ButtonText(recordButtonRect.CenterWithDimensions(recordStrLen + rowPadding * 2, 30), recordStr) && canRecord) {
                 curHeader.methodName = GUIController.CurrentProfiler.label;
+                curHeader.entries = 0;
                 
-                CheckValidHeader();
-
                 file = new EntryFile()
                 {
                     header = curHeader,
                     times = new double[curHeader.targetEntries],
                 };
+                
                 if (!curHeader.entryPerCall)
                     file.calls = new int[curHeader.targetEntries];
-            }
 
-            if (s.ButtonText("Save"))
-            {
-                FileUtility.WriteFile(file);
+                prevIdx = GUIController.CurrentProfiler.currentIndex;
+            }
+            
+            GUI.color = Color.white;
+
+            var pauseButtonRect = buttonRowRect.PopLeftPartPixels(iconSize).CenterWithDimensions(iconSize, 30);
+            buttonRowRect.AdjustHorizonallyBy(rowPadding);
+
+            if ( canRecord ) {
+                GUI.color = Color.gray;
+            }
+            
+            GUI.DrawTexture(pauseButtonRect, Textures.stoppg);
+            if (Widgets.ButtonInvisible(pauseButtonRect) && !canRecord) {
                 file = null;
                 curHeader.entries = 0;
-                curHeader.methodName = null;
-                curHeader.name = null;
+            }
+            
+            var saveButtonRect = buttonRowRect.PopLeftPartPixels(iconSize).CenterWithDimensions(iconSize, 30);
+            buttonRowRect.AdjustHorizonallyBy(rowPadding);
+
+            GUI.color = Color.white;
+
+            var canSave = file != null && file.header.entries == file.header.targetEntries;
+            if (!canSave) {
+                GUI.color = Color.gray;
+            } 
+
+            GUI.DrawTexture(saveButtonRect, Textures.savebg);
+            if (Widgets.ButtonInvisible(saveButtonRect) && canSave) {
+                Flush();
+            }
+            
+            Widgets.Label(buttonRowRect, GetStatus());
+            
+            GUI.color = Widgets.SeparatorLineColor;
+            Widgets.DrawLineHorizontal(r.x - 7f, r.y - 2f, r.width + 7f);
+            r.AdjVertBy(6f);
+            GUI.color = Color.white;
+
+            void DrawOption(string name, ref bool option) {
+                var rect = r.PopTopPartPixels(Text.LineHeight);
+                
+                var checkboxRect = rect.PopRightPartPixels(Text.LineHeight);
+                Widgets.DrawTextureFitted(checkboxRect, option ? Widgets.CheckboxOnTex : Widgets.CheckboxOffTex, 0.5f);
+                if (Widgets.ButtonInvisible(checkboxRect)) {
+                    option = !option;
+                }
+                
+                Widgets.Label(rect, name);
+            }
+            
+            // Options
+            DrawOption("Only Entries with Values", ref curHeader.onlyEntriesWithValues);
+            DrawOption("One Entry per Call", ref curHeader.entryPerCall);
+            DrawOption("Auto flush at max entries", ref flushAtMaxEntries);
+
+            // Number of entries
+            var numEntriesRect = r.PopTopPartPixels(Text.LineHeight);
+            var numEntriesStr = "Entries to record: ";
+            var numEntriesStrLen = numEntriesStr.GetWidthCached();
+            var numEntriesLabelRect = numEntriesRect.PopLeftPartPixels(numEntriesStrLen + 7f);
+            Widgets.Label(numEntriesLabelRect, numEntriesStr);
+            numEntriesRect.width -= 7f;
+            quantityStr ??= curHeader.targetEntries.ToString();
+            Widgets.TextFieldNumeric(numEntriesRect, ref curHeader.targetEntries, ref quantityStr, 0, 10_000);
+
+            GUI.color = Widgets.SeparatorLineColor;
+            r.AdjVertBy(6f);
+            Widgets.DrawLineHorizontal(r.x - 7f, r.y - 2f, r.width + 7f);
+            r.AdjVertBy(6f);
+            GUI.color = Color.white;
+            
+            var fileNameRect = r.PopTopPartPixels(Text.LineHeight);
+            var str = "Label: ";
+            var strLen = str.GetWidthCached();
+            
+            Widgets.Label(fileNameRect.PopLeftPartPixels(strLen + 5), str);
+            fileNameRect.width -= 7;
+            DubGUI.InputField(fileNameRect, "file_name_input", ref curHeader.name);
+            
+            if (file != null) {
+                file.header.name = curHeader.name;
+            }
+            
+            GUI.color = Widgets.SeparatorLineColor;
+            Widgets.DrawLineHorizontal(r.x - 7, r.y + 6f, r.width + 7);
+            GUI.color = Color.white;
+            r.AdjustVerticallyBy(12f);
+            
+            DrawFileInfo(r);
+        }
+
+        private void DrawFileInfo(Rect inRect) {
+            
+            var prevEntries = FileUtility.PreviousEntriesFor(GUIController.CurrentProfiler.label).ToList();
+
+            var viewRect = inRect;
+            viewRect.height = Text.LineHeight * prevEntries.Count;
+            if (viewRect.height >= inRect.height) {
+                viewRect.width -= 16f;
             }
 
-            var dbgRect = s.GetRect(Text.LineHeight * 3);
-            
-            if (Widgets.ButtonText(dbgRect.LeftHalf(),"Print directory path"))
-            {
-                ThreadSafeLogger.Message(FileUtility.GetDirectory().FullName);
+            Widgets.BeginScrollView(inRect, ref fileScrollPos, viewRect);
+
+            int i = 0;
+            foreach (var entry in prevEntries) {
+                var rowRect = viewRect.PopTopPartPixels(Text.LineHeight);
+                if (++i % 2 == 0) {
+                    Widgets.DrawLightHighlight(rowRect);
+                }
+
+                if (Widgets.ButtonImage(rowRect.PopRightPartPixels(Text.LineHeight), TexButton.DeleteX)) {
+                    ThreadSafeLogger.Message($"Deleting file {entry.info.Name}");
+                    FileUtility.DeleteFile(entry.info);
+                }
+
+                rowRect.width -= 3.5f;
+                GUI.color = Widgets.SeparatorLineColor;
+                Widgets.DrawLineVertical(rowRect.x + rowRect.width, rowRect.y, rowRect.height);
+                GUI.color = Color.white;
+                rowRect.width -= 3.5f;
+                
+                var rhsAlreadySelected = rhs != null && rhs.file.Name == entry.info.Name;
+                if (rhsAlreadySelected) {
+                    GUI.color = Color.gray;
+                }
+
+                if ( Widgets.ButtonText(rowRect.PopRightPartPixels(Text.LineHeight), "R") && !rhsAlreadySelected) {
+                    rhs = new SidedEntry(entry.info);
+
+                    if (lhs == rhs) {
+                        lhs = null;
+                    }
+                }
+                
+                rowRect.width -= 3.5f;
+                GUI.color = Widgets.SeparatorLineColor;
+                Widgets.DrawLineVertical(rowRect.x + rowRect.width, rowRect.y, rowRect.height);
+                GUI.color = Color.white;
+                rowRect.width -= 3.5f;
+
+                var lhsAlreadySelected = lhs != null && lhs.file.Name == entry.info.Name;
+                if (lhsAlreadySelected) {
+                    GUI.color = Color.gray;
+                }
+                
+                if (Widgets.ButtonText(rowRect.PopRightPartPixels(Text.LineHeight), "L") && !lhsAlreadySelected) {
+                    lhs = new SidedEntry(entry.info);
+
+                    if (rhs == lhs) {
+                        rhs = null;
+                    }
+                }
+                
+                rowRect.width -= 3.5f;
+                GUI.color = Widgets.SeparatorLineColor;
+                Widgets.DrawLineVertical(rowRect.x + rowRect.width, rowRect.y, rowRect.height);
+                GUI.color = Color.white;
+                rowRect.width -= 3.5f;
+
+                var name = entry.header.Name;
+                if (name == GUIController.CurrentProfiler.label) {
+                    // This becomes the integer part of the saved file
+                    // I.e. frametime_11 
+                    //                ^^
+                    name = $"{FileUtility.GetFileNumber(entry.info)} ({entry.info.LastWriteTime:yyyy-M-d hh:mm})";
+                }
+
+                Widgets.Label(rowRect, name.Truncate(rowRect.width));
+                TooltipHandler.TipRegion(rowRect, entry.info.Name);
             }
-            if (Widgets.ButtonText(dbgRect.RightHalf(),"Print directory files matching current profiler"))
-            {
-                foreach(var f in FileUtility.PreviousEntriesFor(GUIController.CurrentProfiler.label))
-                    ThreadSafeLogger.Message(f.FullName);
-            }
             
-            s.End();
+            Widgets.EndScrollView();
         }
     }
 }

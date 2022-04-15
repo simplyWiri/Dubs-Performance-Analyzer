@@ -75,28 +75,22 @@ namespace Analyzer.Profiling
             }
         }
 
+        public static void NotifyNewProfiler(Profiler prev, Profiler next) {
+            ResetCurrentPanel();
+            GetGeneralSidePanelInformation();
+            
+            // are we in the patches category, but the method has no patches?
+            if (ProfileInfoTab == ProfileInfoMode.Patches && (currentProfilerInformation?.patches.Any() ?? false))
+                ProfileInfoTab = ProfileInfoMode.Graph;
+                
+            // are we in the stack trace category, but the profiler has no method?
+            if (ProfileInfoTab == ProfileInfoMode.StackTrace && currentProfilerInformation?.method != null)
+                ProfileInfoTab = ProfileInfoMode.Graph;
+        }
 
         public static void Draw(Rect rect)
         {
             if (GUIController.CurrentProfiler == null) return;
-            
-            if (currentProfilerInformation == null || currentProfilerInformation.Value.method != GUIController.CurrentProfiler.meth)
-            {
-                if ( ProfileInfoTab != ProfileInfoMode.Save)
-                {
-                    ResetCurrentPanel();
-                    GetGeneralSidePanelInformation();
-                }
-
-                
-                // are we in the patches category, but the method has no patches?
-                if (ProfileInfoTab == ProfileInfoMode.Patches && (currentProfilerInformation?.patches.Any() ?? false))
-                    ProfileInfoTab = ProfileInfoMode.Graph;
-                
-                // are we in the stack trace category, but the profiler has no method?
-                if (ProfileInfoTab == ProfileInfoMode.StackTrace && currentProfilerInformation?.method != null)
-                    ProfileInfoTab = ProfileInfoMode.Graph;
-            }
 
             var statbox = rect;
             statbox.width = Panel_Tabs.width - 10;
@@ -125,7 +119,7 @@ namespace Analyzer.Profiling
             {
                 DrawTab(tabRect, ProfileInfoMode.Patches, "Patches");
                 tabRect.x = tabRect.xMax;
-            }
+            }   
             if (currentProfilerInformation?.method != null)
             {
                 DrawTab(tabRect, ProfileInfoMode.StackTrace, "Stacktrace");

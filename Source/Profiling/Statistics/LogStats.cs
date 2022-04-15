@@ -50,6 +50,11 @@ namespace Analyzer.Profiling
             Task.Factory.StartNew(() => ExecuteWorker(lCalls, lTimes, logCount));
         }
 
+        public static LogStats GatherStats(EntryFile file) {
+            return GatherStats(file.calls, file.times, file.header.entries);
+        }
+
+        
         public static LogStats GatherStats(int[] calls, double[] times, int entries)
         {
             var stats = new LogStats();

@@ -318,8 +318,7 @@ namespace Analyzer.Profiling
 
         private static void DrawLog(ProfileLog log, ref float currentListHeight)
         {
-            if (log.pinned is false && Matched(log, Panel_TopRow.TimesFilter) is false)
-            {
+            if (log.pinned is false && Matched(log, Panel_TopRow.TimesFilter) is false)  {
                 return;
             }
 
@@ -406,12 +405,11 @@ namespace Analyzer.Profiling
                     GUIController.CurrentEntry.onClick?.Invoke(null, new object[] { profile, log });
                     Modbase.Settings.Write();
                 }
-                else
-                {
-                    if (GUIController.CurrentProfiler == profile)
-                        GUIController.CurrentProfiler = null;
-                    else // This is now the 'active' profile  
-                        GUIController.CurrentProfiler = profile;
+                else {
+                    var old = GUIController.CurrentProfiler;
+                    
+                    GUIController.CurrentProfiler = GUIController.CurrentProfiler == profile ? null : profile;
+                    Panel_BottomRow.NotifyNewProfiler(old, GUIController.CurrentProfiler);
                 }
             }
             else if (Event.current.button == 1) // right click

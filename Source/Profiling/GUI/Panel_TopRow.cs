@@ -4,7 +4,6 @@ using Verse;
 
 namespace Analyzer.Profiling
 {
-    [HotSwappable]
     public static class Panel_TopRow
     {
         public static string TimesFilter = string.Empty;
