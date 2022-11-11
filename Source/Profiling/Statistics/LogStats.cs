@@ -50,6 +50,11 @@ namespace Analyzer.Profiling
             Task.Factory.StartNew(() => ExecuteWorker(lCalls, lTimes, logCount));
         }
 
+        public static LogStats GatherStats(EntryFile file) {
+            return GatherStats(file.calls, file.times, file.header.entries);
+        }
+
+        
         public static LogStats GatherStats(int[] calls, double[] times, int entries)
         {
             var stats = new LogStats();
@@ -74,8 +79,8 @@ namespace Analyzer.Profiling
             stats.MedianCalls = calls[middle];
 
             // Max
-            stats.HighestTime = times[Profiler.RECORDS_HELD - 1];
-            stats.HighestCalls = calls[Profiler.RECORDS_HELD - 1];
+            stats.HighestTime = times[entries - 1];
+            stats.HighestCalls = calls[entries - 1];
 
             // general
             stats.Entries = entries;

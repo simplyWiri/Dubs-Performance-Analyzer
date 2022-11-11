@@ -32,8 +32,10 @@ namespace Analyzer
         public static Texture2D refresh = ContentFinder<Texture2D>.Get("DPA/UI/Refresh", false);
         public static Texture2D pin = ContentFinder<Texture2D>.Get("DPA/UI/Pin", false);
         public static Texture2D Burger = ContentFinder<Texture2D>.Get("DPA/UI/billButt", false);
-
-
+        
+        public static Texture2D clearbg = ContentFinder<Texture2D>.Get("DPA/UI/Clear", false);
+        public static Texture2D savebg = ContentFinder<Texture2D>.Get("DPA/UI/Save", false);
+        public static Texture2D stoppg = ContentFinder<Texture2D>.Get("DPA/UI/Stop", false);
     }
 
     public static class Strings // May want to disable Code Lens for the formatting here...

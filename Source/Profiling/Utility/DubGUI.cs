@@ -484,5 +484,40 @@ namespace Analyzer.Profiling
             Widgets.Label(rect, label);
             ResetFont();
         }
+        
+        public static void AdjVertBy(this ref Rect rect, float value) {
+            rect.y += value;
+            rect.height -= value;
+        }
+
+        public static void AdjHorzBy(this ref Rect rect, float value) {
+            rect.x += value;
+            rect.width -= value;
+        }
+
+        public static Rect PopTopPartPixels(this ref Rect rect, float numPixels) {
+            var ret = rect.TopPartPixels(numPixels);
+            rect.AdjVertBy(numPixels);
+            return ret;
+        }
+
+        public static Rect PopLeftPartPixels(this ref Rect rect, float numPixels) {
+            var ret = rect.LeftPartPixels(numPixels);
+            rect.AdjHorzBy(numPixels);
+            return ret;
+        }
+
+        public static Rect PopRightPartPixels(this ref Rect rect, float numPixels) {
+            var ret = rect.RightPartPixels(numPixels);
+            rect.width -= numPixels;
+            return ret;
+        }
+
+        public static Rect MiddlePartPixels(this Rect rect, float numPixels) {
+            var center = rect.center;
+            rect.y = center.y - numPixels/2.0f;
+            rect.height = numPixels;
+            return rect;
+        }
     }
 }
