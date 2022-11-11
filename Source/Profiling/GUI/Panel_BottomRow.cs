@@ -152,7 +152,7 @@ namespace Analyzer.Profiling
         private static void GetGeneralSidePanelInformation()
         {
             currentProfilerInformation = null;
-            if (GUIController.CurrentProfiler.meth == null) return;
+            if (GUIController.CurrentProfiler?.meth == null) return;
 
             var info = new GeneralInformation();
 
