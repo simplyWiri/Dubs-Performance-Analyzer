@@ -136,22 +136,33 @@ namespace Analyzer.Profiling
 
         public static void Initialise()
         {
-            foreach (var mod in LoadedModManager.RunningMods)
-            {
-                foreach (var asm in mod.assemblies.loadedAssemblies)
+            try {
+                foreach (var mod in LoadedModManager.RunningMods)
                 {
-                    if(mods.ContainsKey(asm) == false)
-                       mods.Add(asm, mod.Name);
+                    foreach (var asm in mod.assemblies.loadedAssemblies)
+                    {
+                        if(mods.ContainsKey(asm) == false)
+                            mods.Add(asm, mod.Name);
+                    }
                 }
-            }
-            var assembly = typeof(Modbase).Assembly;
             
-            // Manually add vanilla to our mod list
-            mods.Add(typeof(Pawn).Assembly, "Rimworld");
+                var assembly = typeof(Modbase).Assembly;
+            
+                // Manually add vanilla to our mod list
+                mods.Add(typeof(Pawn).Assembly, "Rimworld");
 
-            // Manually add our harmony ids.
-            harmonyIds.Add(Modbase.Harmony.Id, assembly);
-            harmonyIds.Add(Modbase.StaticHarmony.Id, assembly);
+                // Manually add our harmony ids.
+                harmonyIds.Add(Modbase.Harmony.Id, assembly);
+                harmonyIds.Add(Modbase.StaticHarmony.Id, assembly);
+            }
+            catch (Exception e) {
+                foreach(var (key, val) in mods)  {
+                    ThreadSafeLogger.Error("Caught an error when building an assembly -> mod mapping, dumping existing mapping");
+                    ThreadSafeLogger.Message($"Asm: {key}, maps to mod {val}");
+                }
+
+                throw e;
+            }
         }
 
         public static void Add(StackTrace trace)
