@@ -149,7 +149,13 @@ namespace Analyzer.Profiling
                 var assembly = typeof(Modbase).Assembly;
             
                 // Manually add vanilla to our mod list
-                mods.Add(typeof(Pawn).Assembly, "Rimworld");
+                var vanillaAsm = typeof(Pawn).Assembly;
+                if (mods.ContainsKey(vanillaAsm)) {
+                    var modName = mods[vanillaAsm];
+                    ThreadSafeLogger.Error($"Mod {modName} has packaged the base-game Rimworld assemblies");
+                } else {
+                    mods.Add(vanillaAsm, "Rimworld");
+                }
 
                 // Manually add our harmony ids.
                 harmonyIds.Add(Modbase.Harmony.Id, assembly);
