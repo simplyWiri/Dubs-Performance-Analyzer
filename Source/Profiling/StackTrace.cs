@@ -193,35 +193,42 @@ namespace Analyzer.Profiling
 
         public static void RegisterHarmonyId(string harmonyid, Assembly assembly)
         {
-            if (harmonyIds.TryGetValue(harmonyid, out var asm))
-            {
-                mods.TryGetValue(asm, out var asmMod);
-                mods.TryGetValue(assembly, out var assemblyMod);
+            if (harmonyid == null || assembly == null) return;
 
-                // Doesn't matter a whole lot
-                if (asmMod == assemblyMod)
+            try {
+                if (harmonyIds.TryGetValue(harmonyid, out var asm))
                 {
-                    return;
+                    mods.TryGetValue(asm, out var asmMod);
+                    mods.TryGetValue(assembly, out var assemblyMod);
+
+                    // Doesn't matter a whole lot
+                    if (asmMod == assemblyMod)
+                    {
+                        return;
+                    }
+                    
+                    var blameString = $"This is a Harmony ID configuration issue with {asmMod} and {assemblyMod}. Please report that they are instantiating harmony with the same ID.";
+                    
+                    ThreadSafeLogger.Message($"The HarmonyID {harmonyid} has been loaded twice. It is associated with both: \n{asm.FullName} and {assembly.FullName}\n{blameString}\n\nEnable verbose logging and restart to view the associated callstack(s)");
+                    if (Settings.verboseLogging)
+                    {
+                        ThreadSafeLogger.Message($"Initial Trace: {GetStackTraceString(harmonyIds_d[harmonyid], out _)}");
+                        ThreadSafeLogger.Message($"Current Trace: {GetStackTraceString(new StackTrace(1, false), out _)}");       
+                    }
                 }
-                
-                var blameString = $"This is a Harmony ID configuration issue with {asmMod} and {assemblyMod}. Please report that they are instantiating harmony with the same ID.";
-                
-                ThreadSafeLogger.Message($"The HarmonyID {harmonyid} has been loaded twice. It is associated with both: \n{asm.FullName} and {assembly.FullName}\n{blameString}\n\nEnable verbose logging and restart to view the associated callstack(s)");
-                if (Settings.verboseLogging)
+                else
                 {
-                    ThreadSafeLogger.Message($"Initial Trace: {GetStackTraceString(harmonyIds_d[harmonyid], out _)}");
-                    ThreadSafeLogger.Message($"Current Trace: {GetStackTraceString(new StackTrace(1, false), out _)}");       
+                    harmonyIds.Add(harmonyid, assembly);
+                    if (Settings.verboseLogging)
+                    {
+                        harmonyIds_d.Add(harmonyid, new StackTrace(1, false));
+                    }
                 }
-            }
-            else
-            {
-                harmonyIds.Add(harmonyid, assembly);
-                if (Settings.verboseLogging)
-                {
-                    harmonyIds_d.Add(harmonyid, new StackTrace(1, false));
-                }
+            } catch(Exception e) {
+                ThreadSafeLogger.ReportException(e, "Caught error when intercepting harmony initialization");
             }
         }
+        
         public static string ModFromPatchId(string pid)
         {
             if (Modbase.visualExceptionIntegration)
