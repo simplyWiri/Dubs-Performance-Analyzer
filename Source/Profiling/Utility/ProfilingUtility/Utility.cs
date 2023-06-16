@@ -235,19 +235,16 @@ namespace Analyzer.Profiling
 
             if (!method.HasMethodBody())
             {
-                Warn($"Does not have a methodbody - {mKey}");
                 return false;
             }
 
             if (method.IsGenericMethod || method.ContainsGenericParameters)
             {
-                Warn($"Can not currently patch generic methods - {mKey}");
                 return false;
             }
 
             if (patchedMethods.Contains(mKey))
             {
-                Warn($"Method has already been patched - {mKey}");
                 return false;
             }
 
