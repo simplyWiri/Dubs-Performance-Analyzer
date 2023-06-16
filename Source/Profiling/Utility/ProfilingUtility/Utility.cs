@@ -425,8 +425,7 @@ namespace Analyzer.Profiling
 
                 InternalMethodUtility.PatchedInternals.Add(method);
 
-                Task.Factory.StartNew(() =>
-                {
+                var work = () => {
                     try
                     {
                         Modbase.Harmony.Patch(method, transpiler: InternalMethodUtility.InternalProfiler);
@@ -435,7 +434,17 @@ namespace Analyzer.Profiling
                     {
                         ReportException(e, $"Failed to patch the internal methods within {Utility.GetSignature(method, false)}");
                     }
-                });
+                };
+
+                if (Settings.disableThreadedPatching) 
+                {
+                    work();
+                } else 
+                {
+                    Task.Factory.StartNew(work);
+                }
+
+
             }
             catch (Exception e)
             {
@@ -487,7 +496,13 @@ namespace Analyzer.Profiling
                 GUIController.AddEntry(mod.Name + "-prof", type);
                 GUIController.SwapToEntry(mod.Name + "-prof");
 
-                Task.Factory.StartNew(() => PatchAssemblyFull(mod.Name + "-prof", assemblies.ToList()));
+                if (Settings.disableThreadedPatching) 
+                {
+                    PatchAssemblyFull(mod.Name + "-prof", assemblies.ToList());
+                } else
+                {    
+                    Task.Factory.StartNew(() => PatchAssemblyFull(mod.Name + "-prof", assemblies.ToList()));
+                }
             }
             else
             {

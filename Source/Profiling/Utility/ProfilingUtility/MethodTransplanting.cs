@@ -78,8 +78,7 @@ namespace Analyzer.Profiling
             patchedMeths.Add(meth);
             typeInfo.TryAdd(meth, type);
 
-            Task.Factory.StartNew(delegate
-            {
+            var work = () => {
                 try
                 {
                     Modbase.Harmony.Patch(meth, transpiler: transpiler);
@@ -93,7 +92,15 @@ namespace Analyzer.Profiling
                         ThreadSafeLogger.ReportException(e, $"Failed to patch the method {Utility.GetSignature(meth, false)}");
 #endif
                 }
-            });
+            };
+
+            if (Settings.disableThreadedPatching) 
+            {
+                work(); 
+            } else 
+            {
+                Task.Factory.StartNew(work);
+            }
         }
 
         // This transpiler basically replicates ProfileController.Start, but in IL, and inside the method it is patching, to reduce as much overhead as

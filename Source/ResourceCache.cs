@@ -65,6 +65,7 @@ namespace Analyzer
         public static string settings_enable_debug_log => "settings.enable.debug.log".Tr();
         public static string settings_show_icon => "settings.show.icon".Tr();
         public static string settings_long_form_names => "settings.long.form.names".Tr();
+        public static string settings_disable_threading => "settings.disable.threading".Tr();
 
 
         // Dev Options

@@ -22,6 +22,7 @@ namespace Analyzer
         public static bool enableLog;
         public static bool showIcon = true;
         public static bool longFormNames = false;
+        public static bool disableThreadedPatching = false;
         public static HashSet<string> SavedPatches_Tick;
         public static HashSet<string> SavedPatches_Update;
 
@@ -49,6 +50,7 @@ namespace Analyzer
             Scribe_Values.Look(ref enableLog, "enableDebugLog", false);
             Scribe_Values.Look(ref showIcon, "showMainTabIcon", true);
             Scribe_Values.Look(ref longFormNames, "longFormNames", false);
+            Scribe_Values.Look(ref disableThreadedPatching, "disableThreadedPatching", false);
 
             Scribe_Collections.Look(ref SavedPatches_Update, "SavedPatches_Update");
             Scribe_Collections.Look(ref SavedPatches_Tick, "SavedPatches_Tick");
