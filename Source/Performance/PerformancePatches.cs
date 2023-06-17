@@ -61,7 +61,6 @@ namespace Analyzer.Performance
             listing.GapLine();
             DrawCategory(listing, PerformanceCategory.Removes, "settings.Disabling".Tr());
             listing.GapLine();
-            FixPatches.Draw(listing);
         }
 
         private static void DrawCategory(Listing_Standard standard, PerformanceCategory category, string stringifiedCat)
