@@ -32,6 +32,7 @@
   	<settings.enable.debug.log>Enable log without debug mode</settings.enable.debug.log>
     <settings.show.icon>Show the main tab icon on the bottom bar</settings.show.icon>
     <settings.long.form.names>Show methods in analyzer using long-form names (includes params)</settings.long.form.names>
+    <settings.disable.threading>Disable multi-threaded patching, may prevent issues with assembly patching.</settings.disable.threading>
 
 	<!-- Dev Options -->
 	<devoptions.heading>Profile</devoptions.heading>

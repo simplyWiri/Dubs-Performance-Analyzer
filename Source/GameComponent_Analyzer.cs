@@ -21,13 +21,10 @@ namespace Analyzer
             this.game = game;
             // On game load, initialise the currently active performance patches
             PerformancePatches.ActivateEnabledPatches();
-
-            FixPatches.OnGameInit(game);
         }
 
         public override void LoadedGame()
         {
-            FixPatches.OnGameLoad(game);
         }
 
 

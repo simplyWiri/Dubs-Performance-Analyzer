@@ -92,7 +92,7 @@ namespace Analyzer.Profiling
 
         public static void PatchEntry(Entry entry)
         {
-            Task.Factory.StartNew(() =>
+            var work = () =>
             {
                 try
                 {
@@ -114,7 +114,15 @@ namespace Analyzer.Profiling
                         ThreadSafeLogger.ReportException(e, $"[Failed to patch entry {entry?.name}");
 #endif
                 }
-            });
+            };
+
+            if (Settings.disableThreadedPatching) 
+            {
+                work();
+            } else 
+            {
+                Task.Factory.StartNew(work);
+            }
         }
 
         public static void Cleanup()
